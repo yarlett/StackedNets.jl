@@ -2,7 +2,7 @@
 
 activation_linear(x::FloatingPoint) = x
 
-function rectified_linear(x::FloatingPoint)
+function activation_rectified_linear(x::FloatingPoint)
 	if x > 0.0
 		return x
 	else
@@ -24,7 +24,7 @@ immutable Layer{T<:FloatingPoint}
 	Onet::Vector{T}
 	O::Vector{T}
 	activation_function::Function
-	function Layer(ni::Int, no::Int)
+	function Layer(ni::Int, no::Int, activation_type::AbstractString)
 		if ni > 0 && no > 0
 			W = zeros(T, (ni, no))
 			for i = 1:size(W, 1)
@@ -35,7 +35,18 @@ immutable Layer{T<:FloatingPoint}
 			B = zeros(T, no)
 			Onet = zeros(T, no)
 			O = zeros(T, no)
-			new(ni, no, W, B, Onet, O, activation_sigmoid)
+			
+			if activation_type == "rectified_linear"
+				activation_function = activation_rectified_linear
+			else if activation_type == "sigmoid"
+				activation_function = activation_sigmoid
+			else if activation_type == "tanh"
+				activation_function = activation_tanh
+			else
+				activation_function = activation_linear
+			end
+			
+			new(ni, no, W, B, Onet, O, activation_function)
 		else
 			error("Invalid input dimensions to create Layer object.")
 		end
