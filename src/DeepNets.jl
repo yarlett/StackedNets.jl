@@ -1,5 +1,9 @@
 module DeepNets
 
-# package code goes here
+	export forward,
+	Layer
+
+	include("layer.jl")
+	include("deepnet.jl")
 
 end # module
