@@ -1,10 +1,9 @@
 module DeepNets
 
 	export forward,
-	DeepNet,
-	Layer
+	DeepNet
 
 	include("layer.jl")
 	include("deepnet.jl")
-	
+	include("nonlinearities.jl")
 end
