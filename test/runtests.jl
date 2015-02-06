@@ -7,13 +7,14 @@ function test_deepnet_construction()
 	step = 1e-8
 	tol = 1e-6
 	# Construct a deep network.
-	DN = DeepNet{Float64}([(2, ""), (5, "sigmoid"), (5, "tanh"), (3, "linear")])
+	spec = generate_random_deepnet_spec()
+	println(spec)
+	DN = DeepNet{Float64}(spec)
 	# Construct an input / output pair.
-	X = rand(2)
-	Y = rand(3)
+	X = rand(spec[1][1])
+	Y = rand(spec[end][1])
 	# Set gradient information on the pattern.
 	backward(X, Y, DN)
-
 	for l = 1:length(DN.layers)
 		L = DN.layers[l]
 		for i = 1:size(L.W, 1)
@@ -38,6 +39,17 @@ function test_deepnet_construction()
 		end
 	end
 	true
+end
+
+function generate_random_deepnet_spec()
+	num_layers = rand(2:20)
+	#activations = ["softmax"]
+	activations = ["exponential", "linear", "rectified_linear", "sigmoid", "tanh"]
+	spec = [(rand(2:20), "")]
+	for l = 1:num_layers
+		push!(spec, (rand(2:20), activations[rand(1:length(activations))]))
+	end
+	spec
 end
 
 # Run tests.

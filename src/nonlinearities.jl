@@ -1,67 +1,71 @@
 ### Activation functions.
 
 function activation_function_selector(activation_type::ASCIIString)
-	if activation_type == "rectified_linear"
-		activation_function! = activation_rectified_linear!
+	if activation_type == "exponential"
+		return ("exponential", activation_exponential!)
+	elseif activation_type == "rectified_linear"
+		return ("rectified_linear", activation_rectified_linear!)
 	elseif activation_type == "sigmoid"
-		activation_function! = activation_sigmoid!
+		return ("sigmoid", activation_sigmoid!)
 	elseif activation_type == "softmax"
-		activation_function! = activation_softmax!
+		return ("softmax", activation_softmax!)
 	elseif activation_type == "tanh"
-		activation_function! = activation_tanh!
+		return ("tanh", activation_tanh!)
 	else
-		activation_function! = activation_linear!
+		return ("linear", activation_linear!)
 	end
-	activation_function!
 end
 
-function activation_linear!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, GRA::Vector{T})
+function activation_exponential!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, DACT_DNET::Vector{T})
 	@inbounds begin
 		for i = 1:length(NET)
-			ACT[i] = NET[i]
-			GRA[i] = 1.0
+			expnet = exp(NET[i])
+			ACT[i] = expnet
+			DACT_DNET[i] = expnet
 		end
 	end
 end
 
-function activation_rectified_linear!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, GRA::Vector{T})
+function activation_linear!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, DACT_DNET::Vector{T})
+	@inbounds begin
+		for i = 1:length(NET)
+			ACT[i] = NET[i]
+			DACT_DNET[i] = 1.0
+		end
+	end
+end
+
+function activation_rectified_linear!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, DACT_DNET::Vector{T})
 	@inbounds begin
 		for i = 1:length(NET)
 			if NET[i] > 0.0
 				ACT[i] = NET[i]
-				GRA[i] = 1.0
+				DACT_DNET[i] = 1.0
 			else
 				ACT[i] = 0.0
-				GRA[i] = 0.0
+				DACT_DNET[i] = 0.0
 			end
 		end
 	end
 end
 
-function activation_sigmoid!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, GRA::Vector{T})
+function activation_sigmoid!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, DACT_DNET::Vector{T})
 	@inbounds begin
 		for i = 1:length(NET)
 			expnx = exp(-NET[i])
 			ACT[i] = 1.0 / (1.0 + expnx)
 			tmp = 1.0 + expnx
-			GRA[i] = expnx / (tmp * tmp)
+			DACT_DNET[i] = expnx / (tmp * tmp)
 		end
 	end
 end
 
-function activation_softmax!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, GRA::Vector{T})
+function activation_softmax!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, DACT_DNET::Vector{T})
 	@inbounds begin
-		# Get maximum net value.
-		max::FloatingPoint = NET[1]
-		for i = 2:length(NET)
-			if NET[i] > max
-				max = NET[i]
-			end
-		end
 		# Exponentiate and compute sum.
-		sum::FloatingPoint = 0.0
+		sum = 0.0
 		for i = 1:length(NET)
-			ACT[i] = exp(NET[i] - max)
+			ACT[i] = exp(NET[i])
 			sum += ACT[i]
 		end
 		# Normalize.
@@ -70,17 +74,19 @@ function activation_softmax!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, G
 				ACT[i] /= sum
 			end
 		end
-		# Set gradient!!!
-		#
-		#
+		# Set gradient.
+		for i = 1:length(NET)
+			expx = exp(NET[i])
+			DACT_DNET[i] = (expx*sum - expx*expx) / (sum * sum)
+		end
 	end
 end
 
-function activation_tanh!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, GRA::Vector{T})
+function activation_tanh!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, DACT_DNET::Vector{T})
 	@inbounds begin
 		for i = 1:length(NET)
 			ACT[i] = tanh(NET[i])
-			GRA[i] = 1.0 - (ACT[i] * ACT[i])
+			DACT_DNET[i] = 1.0 - (ACT[i] * ACT[i])
 		end
 	end
 end

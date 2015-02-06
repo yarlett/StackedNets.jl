@@ -30,15 +30,14 @@ function forward(X::Vector, DN::DeepNet)
 	end
 end
 
-function backward(X::Vector, T::Vector, DN::DeepNet)
+function backward(X::Vector, Y::Vector, DN::DeepNet)
 	# Forward propagate the input pattern through the network.
 	forward(X, DN)
 	# Compute the deltas for each unit.
 	L = DN.layers[end]
 	for o = 1:L.no
-		L.DELTA[o] = (L.ACT[o] - T[o]) # Assuming squared error function.
+		L.DELTA[o] = (L.ACT[o] - Y[o]) * L.DACT_DNET[o] # Assuming squared error function.
 	end
-	println(L.DELTA)
 	for l in length(DN.layers)-1:-1:1
 		L1, L2 = DN.layers[l], DN.layers[l+1]
 		for o1 = 1:size(L2.W, 1)
@@ -48,9 +47,7 @@ function backward(X::Vector, T::Vector, DN::DeepNet)
 			end
 			L1.DELTA[o1] *= L1.DACT_DNET[o1]
 		end
-		println(L1.DELTA)
 	end
-	println()
 	# Now update gradient information.
 	for l = 1:length(DN.layers)
 		L = DN.layers[l]
