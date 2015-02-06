@@ -8,4 +8,4 @@ DeepNets can consist of any number of layers stacked on top of one another. Each
 
 Currently supported activation functions include exponential, linear, rectified linear, sigmoidal, softmax, and tanh activations.
 
-Currently only the squared error function is supported, although other error functions will be added and supported in the future. Support for dropout of hidden activations will also be added in the future.
+Currently only the squared error function is supported, although other error functions will be added and supported in the future. Support for dropout of hidden activations during training will also be added in the future.
