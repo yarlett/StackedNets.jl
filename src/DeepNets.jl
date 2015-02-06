@@ -1,6 +1,8 @@
 module DeepNets
 
-	export forward,
+	export backward,
+	error,
+	forward,
 	DeepNet
 
 	include("layer.jl")

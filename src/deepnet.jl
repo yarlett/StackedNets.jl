@@ -24,9 +24,51 @@ immutable DeepNet{T<:FloatingPoint}
 end
 
 function forward(X::Vector, DN::DeepNet)
-	DN.layers[1].O[:] = X[:]
+	forward(X, DN.layers[1])
 	for l = 2:length(DN.layers)
-		forward(DN.layers[l-1].O, DN.layers[l])
+		forward(DN.layers[l-1].ACT, DN.layers[l])
 	end
 end
 
+function backward(X::Vector, T::Vector, DN::DeepNet)
+	# Forward propagate the input pattern through the network.
+	forward(X, DN)
+	# Compute the deltas for each unit.
+	L = DN.layers[end]
+	for o = 1:L.no
+		L.DELTA[o] = (L.ACT[o] - T[o]) # Assuming squared error function.
+	end
+	println(L.DELTA)
+	for l in length(DN.layers)-1:-1:1
+		L1, L2 = DN.layers[l], DN.layers[l+1]
+		for o1 = 1:size(L2.W, 1)
+			L1.DELTA[o1] = 0.0
+			for o2 = 1:size(L2.W, 2)
+				L1.DELTA[o1] += L2.W[o1, o2] * L2.DELTA[o2]
+			end
+			L1.DELTA[o1] *= L1.DACT_DNET[o1]
+		end
+		println(L1.DELTA)
+	end
+	println()
+	# Now update gradient information.
+	for l = 1:length(DN.layers)
+		L = DN.layers[l]
+		for o1 = 1:size(L.W, 1)
+			for o2 = 1:size(L.W, 2)
+				L.GW[o1, o2] += L.IN[o1] * L.DELTA[o2]
+			end
+		end
+		for o2 = 1:size(L.W, 2)
+			L.GB[o2] += L.DELTA[o2]
+		end
+	end
+end
+
+function error{T<:FloatingPoint}(X::Vector{T}, Y::Vector{T}, DN::DeepNet{T})
+	forward(X, DN)
+	ERRS = zeros(T, length(DN.layers[end].ACT))
+	error_squared!(DN.layers[end].ACT, Y, ERRS)
+	E = sum(ERRS)
+	E
+end

@@ -15,7 +15,7 @@ function activation_function_selector(activation_type::AbstractString)
 	activation_function!
 end
 
-function activation_linear!(NET::Vector{FloatingPoint}, ACT::Vector{FloatingPoint}, GRA::Vector{FloatingPoint})
+function activation_linear!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, GRA::Vector{T})
 	@inbounds begin
 		for i = 1:length(NET)
 			ACT[i] = NET[i]
@@ -24,7 +24,7 @@ function activation_linear!(NET::Vector{FloatingPoint}, ACT::Vector{FloatingPoin
 	end
 end
 
-function activation_rectified_linear!(NET::Vector{FloatingPoint}, ACT::Vector{FloatingPoint}, GRA::Vector{FloatingPoint})
+function activation_rectified_linear!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, GRA::Vector{T})
 	@inbounds begin
 		for i = 1:length(NET)
 			if NET[i] > 0.0
@@ -38,7 +38,7 @@ function activation_rectified_linear!(NET::Vector{FloatingPoint}, ACT::Vector{Fl
 	end
 end
 
-function activation_sigmoid!(NET::Vector{FloatingPoint}, ACT::Vector{FloatingPoint}, GRA::Vector{FloatingPoint})
+function activation_sigmoid!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, GRA::Vector{T})
 	@inbounds begin
 		for i = 1:length(NET)
 			expnx = exp(-NET[i])
@@ -49,7 +49,7 @@ function activation_sigmoid!(NET::Vector{FloatingPoint}, ACT::Vector{FloatingPoi
 	end
 end
 
-function activation_softmax!(NET::Vector{FloatingPoint}, ACT::Vector{FloatingPoint}, GRA::Vector{FloatingPoint})
+function activation_softmax!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, GRA::Vector{T})
 	@inbounds begin
 		# Get maximum net value.
 		max::FloatingPoint = NET[1]
@@ -76,7 +76,7 @@ function activation_softmax!(NET::Vector{FloatingPoint}, ACT::Vector{FloatingPoi
 	end
 end
 
-function activation_tanh!(NET::Vector{FloatingPoint}, ACT::Vector{FloatingPoint}, GRA::Vector{FloatingPoint})
+function activation_tanh!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, GRA::Vector{T})
 	@inbounds begin
 		for i = 1:length(NET)
 			ACT[i] = tanh(NET[i])
@@ -87,10 +87,10 @@ end
 
 ### Error functions.
 
-function error_squared!(YH::Vector{FloatingPoint}, Y::Vector{FloatingPoint}, OUT::Vector{FloatingPoint})
+function error_squared!{T<:FloatingPoint}(YH::Vector{T}, Y::Vector{T}, OUT::Vector{T})
 	@inbounds begin
 		for i = 1:length(Y)
-			OUT[i] = (YH - Y).^2
+			OUT[i] = 0.5 * ((YH[i] - Y[i]) .^ 2)
 		end
 	end
 end
