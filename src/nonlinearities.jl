@@ -1,6 +1,6 @@
 ### Activation functions.
 
-function activation_function_selector(activation_type::AbstractString)
+function activation_function_selector(activation_type::ASCIIString)
 	if activation_type == "rectified_linear"
 		activation_function! = activation_rectified_linear!
 	elseif activation_type == "sigmoid"

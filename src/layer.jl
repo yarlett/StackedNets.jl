@@ -15,7 +15,7 @@ immutable Layer{T<:FloatingPoint}
 	GB::Vector{T}
 	activation_function!::Function
 	# Constructor.
-	function Layer(ni::Int, no::Int, activation_type::AbstractString)
+	function Layer(ni::Int, no::Int, activation_type::ASCIIString)
 		if ni > 0 && no > 0
 			IN = zeros(T, ni)
 			# Initialize weights and biases for layer.
