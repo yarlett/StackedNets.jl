@@ -8,4 +8,25 @@ DeepNets can consist of any number of layers stacked on top of one another. Each
 
 Currently supported activation functions include exponential, linear, rectified linear, sigmoidal, softmax, and tanh activations.
 
-Currently only the squared error function is supported, although other error functions will be added and supported in the future. Support for dropout of hidden activations during training will also be added in the future.
+Currently supported error functions are squared error and cross entropy.
+
+Support for dropout of hidden activations during training will also be added in the future.
+
+## Example
+
+Let's say you want to construct a DeepNet consisting of 50 input units, connected to 100 sigmoidal units, connected to 50 tanh units, connected to 30 linear (output) units. And let's say you want to train the network using the cross entropy loss function. This can be accomplished with:
+
+```julia
+spec = [(50, ""), (100, "sigmoid"), (50, "tanh"), (30, "linear")]
+DN = DeepNet{Float64}(spec, "cross_entropy")
+```
+
+Now let's say you want to compute the gradient of the error function with respect to every parameter in the net. That's also easy:
+
+```julia
+X = randn(1000, 50) # Create 1000 input cases.
+Y = rand(1000, 30)  # Create 1000 output cases.
+gradient_update_batch(X, Y, DN)
+```
+
+L.GB and L.GW within each Layer in the DeepNet stack will now contain the required gradient information for its corresponding parameter.

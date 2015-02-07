@@ -2,19 +2,16 @@ using DeepNets
 using Base.Test
 
 # Define test functions.
-function test_deepnet_construction()
-	#
-	step = 1e-8
-	tol = 1e-6
+function test_deepnet_gradient(; step=1e-8, tol=1e-6)
 	# Construct a deep network.
-	spec = generate_random_deepnet_spec()
+	spec = _generate_random_deepnet_spec()
 	println(spec)
-	DN = DeepNet{Float64}(spec)
+	DN = DeepNet{Float64}(spec, "squared_error")
 	# Construct an input / output pair.
 	X = rand(spec[1][1])
 	Y = rand(spec[end][1])
-	# Set gradient information on the pattern.
-	backward(X, Y, DN)
+	# Set gradient information on the pattern and compare it to numerically derived gradients.
+	gradient_update_pattern(X, Y, DN)
 	for l = 1:length(DN.layers)
 		L = DN.layers[l]
 		for i = 1:size(L.W, 1)
@@ -38,10 +35,20 @@ function test_deepnet_construction()
 			L.B[b] = curb
 		end
 	end
-	true
 end
 
-function generate_random_deepnet_spec()
+function test_deepnet_batch()
+	# Create our data.
+	X = rand(10000, 10)
+	Y = rand(10000, 3)
+	# Create DeepNet.
+	spec = [(10, ""), (50, "sigmoid"), (50, "sigmoid"), (3, "linear")]
+	DN = DeepNet{Float64}(spec, "squared_error")
+	# Compute the gradient on the whole batch.
+	gradient_update_batch(X, Y, DN)
+end
+
+function _generate_random_deepnet_spec()
 	num_layers = rand(2:20)
 	#activations = ["softmax"]
 	activations = ["exponential", "linear", "rectified_linear", "sigmoid", "tanh"]
@@ -49,8 +56,10 @@ function generate_random_deepnet_spec()
 	for l = 1:num_layers
 		push!(spec, (rand(2:20), activations[rand(1:length(activations))]))
 	end
+	push!(spec, (5, "sigmoid"))
 	spec
 end
 
 # Run tests.
-@test test_deepnet_construction()
+@time test_deepnet_gradient()
+@time test_deepnet_batch()
