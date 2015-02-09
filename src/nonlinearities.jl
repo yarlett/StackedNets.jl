@@ -9,6 +9,8 @@ function activation_function_selector(activation_type::ASCIIString)
 		return ("sigmoid", activation_sigmoid!)
 	elseif activation_type == "softmax"
 		return ("softmax", activation_softmax!)
+	elseif activation_type == "softplus"
+		return ("softplus", activation_softplus!)
 	elseif activation_type == "tanh"
 		return ("tanh", activation_tanh!)
 	else
@@ -77,6 +79,17 @@ function activation_softmax!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, D
 		for i = 1:length(NET)
 			ACT[i] = ACT[i] / expsum
 			DACT_DNET[i] = ACT[i] * (1.0 - ACT[i])
+		end
+	end
+end
+
+function activation_softplus!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, DACT_DNET::Vector{T})
+	@inbounds begin
+		expx::T = 0.0
+		for i = 1:length(NET)
+			expx = exp(NET[i])
+			ACT[i] = log(1.0 + expx)
+			DACT_DNET[i] = expx / (1.0 + expx)
 		end
 	end
 end

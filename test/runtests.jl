@@ -46,7 +46,7 @@ function test_deepnet_batch()
 	X = rand(10000, 10)
 	Y = rand(10000, 3)
 	# Create DeepNet.
-	spec = [(10, ""), (50, "sigmoid"), (50, "sigmoid"), (3, "linear")]
+	spec = [(10, ""), (50, "sigmoid"), (30, "sigmoid"), (3, "linear")]
 	DN = DeepNet{Float64}(spec, "squared_error")
 	# Compute the gradient on the whole batch.
 	gradient_update_batch(X, Y, DN)
@@ -55,7 +55,7 @@ end
 # Generates random DeepNet specifications to test.
 function _generate_random_deepnet_spec()
 	num_layers = rand(2:20)
-	activations = ["exponential", "linear", "rectified_linear", "sigmoid", "softmax", "tanh"]
+	activations = ["exponential", "linear", "rectified_linear", "sigmoid", "softmax", "softplus", "tanh"]
 	spec = [(rand(2:20), "")]
 	for l = 1:num_layers
 		push!(spec, (rand(2:20), activations[rand(1:length(activations))]))

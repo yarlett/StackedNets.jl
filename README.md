@@ -4,9 +4,9 @@
 
 DeepNets aims to provide a simple interface to "deep" stacks of neural network units that can be trained with gradient descent of selected error measures.
 
-DeepNets can consist of any number of layers stacked on top of one another. Each layer can have a diffferent number of output units that feed into the next layer above in the stack, and can have different activation functions.
+DeepNets can consist of any number of Layers stacked on top of one another. Each layer can have a different number of output units that feed into the next layer above in the stack, and can have different activation functions.
 
-Currently supported activation functions include exponential, linear, rectified linear, sigmoidal, softmax, and tanh activations.
+Currently supported activation functions include exponential, linear, rectified linear, sigmoidal, softmax, softplus, and tanh activations.
 
 Currently supported error functions are squared error and cross entropy.
 
