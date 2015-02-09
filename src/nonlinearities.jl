@@ -52,26 +52,31 @@ end
 function activation_sigmoid!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, DACT_DNET::Vector{T})
 	@inbounds begin
 		for i = 1:length(NET)
-			expnx = exp(-NET[i])
-			ACT[i] = 1.0 / (1.0 + expnx)
-			tmp = 1.0 + expnx
-			DACT_DNET[i] = expnx / (tmp * tmp)
+			ACT[i] = 1.0 / (1.0 + exp(-NET[i]))
+			DACT_DNET[i] = ACT[i] * (1.0 - ACT[i])
 		end
 	end
 end
 
 function activation_softmax!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T}, DACT_DNET::Vector{T})
 	@inbounds begin
-		# Get sum.
+		# Get maximum net value.
+		netmax::T = -Inf
+		for i = 1:length(NET)
+			if NET[i] > netmax
+				netmax = NET[i]
+			end
+		end
+		# Get sum of exponentials.
 		expsum::T = 0.0
 		for i = 1:length(NET)
-			expsum += exp(NET[i])
+			ACT[i] = exp(NET[i] - netmax)
+			expsum += ACT[i]
 		end
-		# Set normalized activations and gradient information.
+		# Compute normalized activations and gradient information.
 		for i = 1:length(NET)
-			expnet = exp(NET[i])
-			ACT[i] = expnet / expsum
-			DACT_DNET[i] = (expnet * (expsum - expnet)) / (expsum * expsum)
+			ACT[i] = ACT[i] / expsum
+			DACT_DNET[i] = ACT[i] * (1.0 - ACT[i])
 		end
 	end
 end
