@@ -12,7 +12,14 @@ Currently supported error functions are squared error and cross entropy.
 
 Support for dropout of hidden activations during training will also be added in the future.
 
-## Example
+## Logistic Regression Example
+
+```julia
+logistic_spec = [(5, ""), (1, "sigmoid")]
+logistic = DeepNet{Float64}(logistic_spec, "cross_entropy")
+```
+
+## Classifying MNIST Digits Example
 
 Let's say you want to construct a DeepNet consisting of 50 input units, connected to 100 sigmoidal units, connected to 50 tanh units, connected to 30 linear (output) units. And let's say you want to train the network using the cross entropy loss function. This can be accomplished with:
 

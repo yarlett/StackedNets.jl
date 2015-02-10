@@ -4,13 +4,13 @@ using Base.Test
 # Function to numerically check the analytic error gradients.
 function test_deepnet_gradient(; step=1e-8, tol=1e-5)
 	# Construct a deep network.
-	spec = _generate_random_deepnet_spec()
-	DN = DeepNet{Float64}(spec, "squared_error")
+	units = _generate_random_units()
+	DN = DeepNet{Float64}(units, "squared_error")
 	# Construct an input / output pair.
-	X = rand(spec[1][1])
-	Y = rand(spec[end][1])
+	X = rand(units[1].n)
+	Y = rand(units[end].n)
 	# Set gradient information on the pattern and compare it to numerically derived gradients.
-	gradient_update_pattern(X, Y, DN)
+	gradient_update(DN, X, Y)
 	for l = 1:length(DN.layers)
 		L = DN.layers[l]
 		# Compared error gradients for weights with numercially derived versions.
@@ -18,9 +18,9 @@ function test_deepnet_gradient(; step=1e-8, tol=1e-5)
 			for j = 1:size(L.W, 2)
 				curw = L.W[i, j]
 				L.W[i, j] = curw - step
-				EN = error(X, Y, DN)
+				EN = error(DN, X, Y)
 				L.W[i, j] = curw + step
-				EP = error(X, Y, DN)
+				EP = error(DN, X, Y)
 				numerical_gradient = (EP - EN) / (2.0 * step)
 				@test_approx_eq_eps(L.GW[i, j], numerical_gradient, tol)
 				L.W[i, j] = curw
@@ -30,9 +30,9 @@ function test_deepnet_gradient(; step=1e-8, tol=1e-5)
 		for b = 1:length(L.B)
 			curb = L.B[b]
 			L.B[b] = curb - step
-			EN = error(X, Y, DN)
+			EN = error(DN, X, Y)
 			L.B[b] = curb + step
-			EP = error(X, Y, DN)
+			EP = error(DN, X, Y)
 			numerical_gradient = (EP - EN) / (2.0 * step)
 			@test_approx_eq_eps(L.GB[b], numerical_gradient, tol)
 			L.B[b] = curb
@@ -42,26 +42,25 @@ end
 
 # Function to check forward propagation through nets works.
 function test_deepnet_batch()
-	# Create our data.
-	X = rand(10000, 10)
-	Y = rand(10000, 3)
+	# Create our data (10000 cases).
+	X = rand(10, 10000)
+	Y = rand(3, 10000)
 	# Create DeepNet.
-	spec = [(10, ""), (50, "sigmoid"), (30, "sigmoid"), (3, "linear")]
-	DN = DeepNet{Float64}(spec, "squared_error")
+	units = [Units(10), Units(50, activation_type="sigmoid"), Units(50, activation_type="sigmoid"), Units(3, activation_type="linear")]
+	DN = DeepNet{Float64}(units, "squared_error")
 	# Compute the gradient on the whole batch.
-	gradient_update_batch(X, Y, DN)
+	gradient_update(DN, X, Y)
 end
 
-# Generates random DeepNet specifications to test.
-function _generate_random_deepnet_spec()
-	num_layers = rand(2:20)
+# Generates random arrays of units for testing purposes.
+function _generate_random_units()
 	activations = ["exponential", "linear", "rectified_linear", "sigmoid", "softmax", "softplus", "tanh"]
-	spec = [(rand(2:20), "")]
-	for l = 1:num_layers
-		push!(spec, (rand(2:20), activations[rand(1:length(activations))]))
+	units = Units[Units(rand(2:20))]
+	for u = 1:rand(1:20)
+		push!(units, Units(rand(2:20), activation_type=activations[rand(1:length(activations))]))
 	end
-	push!(spec, (5, "sigmoid"))
-	spec
+	push!(units, Units(5, activation_type="sigmoid"))
+	units
 end
 
 # Run tests.

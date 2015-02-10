@@ -2,11 +2,13 @@ module DeepNets
 
 	export error,
 	forward,
-	gradient_update_batch,
-	gradient_update_pattern,
-	DeepNet
+	gradient_update,
+	train_sgd,
+	DeepNet,
+	Units
 
 	include("layer.jl")
 	include("deepnet.jl")
 	include("nonlinearities.jl")
+	include("units.jl")
 end
