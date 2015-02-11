@@ -1,15 +1,14 @@
 using StatsBase
 
-### DeepNet type (a DeepNet is a stack of Layers).
-include("units.jl")
+include("utils.jl")
 
+### DeepNet type.
 immutable DeepNet{T<:FloatingPoint}
-	# Data.
 	layers::Vector{Layer{T}}
 	error_type::ASCIIString
 	error_function!::Function
-	# Constructor.
-	function DeepNet(units::Vector{Units}, error_type::ASCIIString)
+
+	function DeepNet(units::Vector{Units}; error_type::ASCIIString="squared_error")
 		if length(units) < 2
 			return error("DeepNet units specification is too short.")
 		end
@@ -29,6 +28,7 @@ immutable DeepNet{T<:FloatingPoint}
 	end
 end
 
+# Returns patternwise error on a single input-output pair.
 function error{T<:FloatingPoint}(DN::DeepNet{T}, X::Vector{T}, Y::Vector{T})
 	forward(DN, X)
 	ERR = zeros(T, length(DN.layers[end].ACT))
@@ -38,6 +38,7 @@ function error{T<:FloatingPoint}(DN::DeepNet{T}, X::Vector{T}, Y::Vector{T})
 	sum(ERR)
 end
 
+# Returns patternwise error on a set of input-output pairs.
 function error{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})
 	E::T = 0.0
 	ERR = zeros(T, length(DN.layers[end].ACT))
@@ -51,6 +52,7 @@ function error{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})
 	E / size(X, 2)
 end
 
+# Sets activations in a DeepNet based on a single input pattern.
 function forward{T<:FloatingPoint}(DN::DeepNet{T}, X::Vector{T})
 	forward(X, DN.layers[1])
 	for l = 2:length(DN.layers)
@@ -58,6 +60,7 @@ function forward{T<:FloatingPoint}(DN::DeepNet{T}, X::Vector{T})
 	end
 end
 
+# Returns output activations in a DeepNet for a set of input patterns.
 function forward{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T})
 	no = DN.layers[end].no
 	Y = zeros(T, (no, size(X, 2)))
@@ -85,81 +88,98 @@ function gradient_reset{T<:FloatingPoint}(DN::DeepNet{T})
 	end
 end
 
-function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})
-	gradient_reset(DN)
-	for p = 1:size(X, 2)
-		gradient_update(DN, X[:, p], Y[:, p])
-	end
-end
-
+# Increment the gradient information (GW and GB) on each layer based on a single input-output pair.
 function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Vector{T}, Y::Vector{T})
-	# Forward propagate the input pattern through the network.
-	forward(DN, X)
-	# Compute the deltas for each unit.
-	L = DN.layers[end]
-	ERR = zeros(T, L.no)
-	DN.error_function!(L.ACT, Y, ERR, L.DELTA)
-	for o = 1:L.no
-		L.DELTA[o] *= L.DACT_DNET[o]
-	end
-	for l in length(DN.layers)-1:-1:1
-		L1, L2 = DN.layers[l], DN.layers[l+1]
-		for i = 1:L2.ni
-			L1.DELTA[i] = 0.0
-			for o = 1:L2.no
-				L1.DELTA[i] += L2.W[i, o] * L2.DELTA[o]
+	@inbounds begin
+		# Forward propagate the input pattern through the network.
+		forward(DN, X)
+		# Backpropagate the deltas for each unit in the network.
+		for l = length(DN.layers):-1:1
+			L = DN.layers[l]
+			# Set deltas for output units.
+			if l == length(DN.layers)
+				DN.error_function!(L.ACT, Y, L.ERR, L.DELTA)
+				for o = 1:L.no
+					L.DELTA[o] *= L.DACT_DNET[o]
+				end
+			else
+				Lup = DN.layers[l+1]
+				for i = 1:Lup.ni
+					L.DELTA[i] = 0.0
+					for o = 1:Lup.no
+						L.DELTA[i] += Lup.W[i, o] * Lup.DELTA[o]
+					end
+					L.DELTA[i] *= L.DACT_DNET[i]
+				end
 			end
-			L1.DELTA[i] *= L1.DACT_DNET[i]
-		end
-	end
-	# Now update gradient information.
-	for l = 1:length(DN.layers)
-		L = DN.layers[l]
-		for i = 1:L.ni
+			# Update the gradient information.
 			for o = 1:L.no
-				L.GW[i, o] += L.IN[i] * L.DELTA[o]
+				for i = 1:L.ni
+					L.GW[i, o] += L.IN[i] * L.DELTA[o]
+				end
+				L.GB[o] += L.DELTA[o]
 			end
-		end
-		for o = 1:L.no
-			L.GB[o] += L.DELTA[o]
 		end
 	end
 end
 
-function update_parameters{T<:FloatingPoint}(DN::DeepNet{T}, lr::T; zero_gradient=true)
-	for l = 1:length(DN.layers)
-		L = DN.layers[l]
-		for i = 1:size(L.W, 1)
-			for j = 1:size(L.W, 2)
-				L.W[i, j] -= lr * L.GW[i, j]
+# Increment the gradient information (GW and GB) on each layer based on a set of input-output pairs.
+function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})
+	@inbounds begin
+		for p = 1:size(X, 2)
+			gradient_update(DN, X[:, p], Y[:, p])
+		end
+	end
+end
+
+function parameters_update{T<:FloatingPoint}(DN::DeepNet{T}, lr::T; zero_gradient=true)
+	@inbounds begin
+		for l = 1:length(DN.layers)
+			L = DN.layers[l]
+			for i = 1:size(L.W, 1)
+				for j = 1:size(L.W, 2)
+					L.W[i, j] -= lr * L.GW[i, j]
+					if zero_gradient
+						L.GW[i, j] = 0.0
+					end
+				end
+			end
+			for b = 1:length(L.B)
+				L.B[b] -= lr * L.GB[b]
 				if zero_gradient
-					L.GW[i, j] = 0.0
+					L.B[b] = 0.0
 				end
 			end
 		end
-		for b = 1:length(L.B)
-			L.B[b] -= lr * L.GB[b]
-			if zero_gradient
-				L.B[b] = 0.0
-			end
-		end
 	end
 end
 
-function train_sgd{T<:FloatingPoint}(DN::DeepNet{T}, X, Y; its=1000, lr::T=1e-2, mbsize=100, mbreplace=true)
-	if (mbsize > size(X, 2)) && !mbreplace
-		mbsize = size(X, 2)
+function train_sgd{T<:FloatingPoint}(DN::DeepNet{T}, X, Y; iterations::Int=1000, learning_rate::T=1e-2, minibatch_size::Int=100, minibatch_replace::Bool=true)
+	num_patterns::Int64 = size(X, 2)
+	# Minibatch size cannot be larger than number of patterns when sampling without replacement.
+	if (minibatch_size > num_patterns) && !minibatch_replace
+		minibatch_size = num_patterns
 	end
-
-	uselr = lr / mbsize
-
-	for it = 1:its
-		# Sample minibatch.
-		mbints = sort(sample(1:size(X, 2), mbsize, replace=mbreplace))
-		mbx, mby = X[:, mbints], Y[:, mbints]
-		# Reset gradient and set gradient based on minibatch.
-		gradient_update(DN, mbx, mby)
+	# Scale learning rate to account for the size of the minibatch.
+	learning_rate_use::T = learning_rate / T(minibatch_size)
+	# Reserve space for minibatch vectors.
+	mbx = zeros(T, size(X, 1))
+	mby = zeros(T, size(Y, 1))
+	# Perform the required number of iterations of learning.
+	gradient_reset(DN)
+	for iteration = 1:iterations
+		# Increment the gradient information based on the minibatch.
+		for mb = 1:minibatch_size
+			p = rand(1:num_patterns)
+			for i = 1:size(X, 1)
+				mbx[i] = X[i, p]
+			end
+			for i = 1:size(Y, 1)
+				mby[i] = Y[i, p]
+			end
+			gradient_update(DN, mbx, mby)
+		end
 		# Update the parameters based on the gradient information.
-		update_parameters(DN, uselr; zero_gradient=true)
+		parameters_update(DN, learning_rate_use, zero_gradient=true)
 	end
 end

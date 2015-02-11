@@ -1,7 +1,7 @@
 using DeepNets
 using MNIST
 
-# This script uses DeepNets to train a logistic regression model to classify MNIST handwritten digits as being odd or even.
+# Uses DeepNets to train a logistic regression model to classify MNIST handwritten digits as being odd or even.
 
 function is_even(digits)
 	for i = 1:length(digits)
@@ -11,24 +11,23 @@ function is_even(digits)
 	digits
 end
 
-# Load MNIST training data.
+# Load MNIST training and testing data.
 xtr, ytr = traindata()
 ytr = is_even(ytr)
 ytr = reshape(ytr, (1, length(ytr)))
 xte, yte = testdata()
 yte = is_even(yte)
 yte = reshape(yte, (1, length(yte)))
+println("Training data: X is $(size(xtr, 1)) by $(size(xtr, 2)); Y is $(size(ytr, 1)) by $(size(ytr, 2)).")
+println("Testing data: X is $(size(xte, 1)) by $(size(xte, 2)); Y is $(size(yte, 1)) by $(size(yte, 2)).")
+println()
 
-# Define logistic classifier model.
+# Define logistic classifier model in DeepNets (logistic classifier has 784 input units and 1 sigmoid output unit).
 logistic_units = [Units(size(xtr, 1)), Units(1, activation_type="sigmoid")]
-logistic_deepnet = DeepNet{Float64}(logistic_units, "cross_entropy")
+logistic_deepnet = DeepNet{Float64}(logistic_units, error_type="cross_entropy")
 
 # Perform stochastic gradient descent.
-xent_tr = error(logistic_deepnet, xtr, ytr)
-xent_te = error(logistic_deepnet, xte, yte)
-println("Training cross entropy = $xent_tr. Testing cross entropy = $xent_te.")
-
-@time train_sgd(logistic_deepnet, xtr, ytr, its=10000, lr=1e-6, mbsize=100, mbreplace=true)
+@time train_sgd(logistic_deepnet, xtr, ytr, iterations=10000, learning_rate=1e-6, minibatch_size=100, minibatch_replace=true)
 
 # Measure training and testing peformance.
 yhtr = forward(logistic_deepnet, xtr)

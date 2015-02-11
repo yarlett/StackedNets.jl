@@ -1,7 +1,8 @@
+include("units.jl")
+
 ### Layer type.
 
 immutable Layer{T<:FloatingPoint}
-	# Data.
 	ni::Int
 	no::Int
 	IN::Vector{T}
@@ -13,41 +14,34 @@ immutable Layer{T<:FloatingPoint}
 	ACT::Vector{T}
 	DACT_DNET::Vector{T}
 	DELTA::Vector{T}
+	ERR::Vector{T}
 	activation::ASCIIString
 	activation_function!::Function
-	# Constructor.
-	function Layer(ni::Int, no::Int, activation_type::ASCIIString; sigma=1e-3)
+
+	function Layer(ni::Int, no::Int, activation_type::ASCIIString; scale=1e-3)
 		if ni > 0 && no > 0
 			IN = zeros(T, ni)
 			# Initialize weights and biases for layer.
-			W = zeros(T, (ni, no))
-			for i = 1:size(W, 1)
-				for j = 1:size(W, 2)
-					W[i, j] = sigma * randn()
-				end
-			end
-			B = zeros(T, no)
-			for i = 1:length(B)
-				B[i] += sigma * randn()
-			end
+			W, B = get_layer_parameters(ni, no, scale=scale)
 			# Initialize storage for gradient information.
-			GW = zeros(T, (ni, no))
-			GB = zeros(T, no)
+			GW, GB = zeros(T, (ni, no)), zeros(T, no)
 			# Initialize storage for upper level units.
 			NET = zeros(T, no)
 			ACT = zeros(T, no)
 			DACT_DNET = zeros(T, no)
 			DELTA = zeros(T, no)
+			ERR = zeros(T, no)
 			# Set activation function for layer.
 			activation, activation_function! = activation_function_selector(activation_type)
 			# Create and return the object.
-			new(ni, no, IN, W, B, GW, GB, NET, ACT, DACT_DNET, DELTA, activation, activation_function!)
+			new(ni, no, IN, W, B, GW, GB, NET, ACT, DACT_DNET, DELTA, ERR, activation, activation_function!)
 		else
 			error("Invalid number of units used to initialize Layer object (ni=$ni; no=$no) to create Layer object.")
 		end
 	end
 end
 
+# Propagate activity forward through a layer.
 function forward{T<:FloatingPoint}(IN::Vector{T}, L::Layer{T})
 	@inbounds begin
 		for i = 1:L.ni

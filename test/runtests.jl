@@ -5,7 +5,7 @@ using Base.Test
 function test_deepnet_gradient(; step=1e-8, tol=1e-5)
 	# Construct a deep network.
 	units = _generate_random_units()
-	DN = DeepNet{Float64}(units, "squared_error")
+	DN = DeepNet{Float64}(units, error_type="squared_error")
 	# Construct an input / output pair.
 	X = rand(units[1].n)
 	Y = rand(units[end].n)
@@ -47,7 +47,7 @@ function test_deepnet_batch()
 	Y = rand(3, 10000)
 	# Create DeepNet.
 	units = [Units(10), Units(50, activation_type="sigmoid"), Units(50, activation_type="sigmoid"), Units(3, activation_type="linear")]
-	DN = DeepNet{Float64}(units, "squared_error")
+	DN = DeepNet{Float64}(units, error_type="squared_error")
 	# Compute the gradient on the whole batch.
 	gradient_update(DN, X, Y)
 end

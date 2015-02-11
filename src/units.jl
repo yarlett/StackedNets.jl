@@ -1,11 +1,10 @@
 ### Units type.
 
 immutable Units
-	# Data.
 	n::Int
 	activation_type::ASCIIString
 	activation_function!::Function
-	# Constructor.
+
 	function Units(n::Int; activation_type::ASCIIString="linear")
 		if n > 0
 			# Set activation function for layer.
