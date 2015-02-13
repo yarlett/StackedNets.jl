@@ -1,3 +1,4 @@
+using DataFrames
 using StatsBase
 
 include("utils.jl")
@@ -132,6 +133,7 @@ function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matr
 	end
 end
 
+# Update the parameters of a DeepNet based on the accumulated gradient information.
 function parameters_update{T<:FloatingPoint}(DN::DeepNet{T}, lr::T; zero_gradient=true)
 	@inbounds begin
 		for l = 1:length(DN.layers)
@@ -154,34 +156,60 @@ function parameters_update{T<:FloatingPoint}(DN::DeepNet{T}, lr::T; zero_gradien
 	end
 end
 
-function train_sgd{T<:FloatingPoint}(DN::DeepNet{T}, X, Y; iterations::Int=1000, learning_rate::T=1e-2, minibatch_size::Int=100, minibatch_replace::Bool=true)
-	num_patterns::Int64 = size(X, 2)
-	# Minibatch size cannot be larger than number of patterns when sampling without replacement.
-	if (minibatch_size > num_patterns) && !minibatch_replace
-		minibatch_size = num_patterns
-	end
-	# Scale learning rate to account for the size of the minibatch.
-	learning_rate_use::T = learning_rate / T(minibatch_size)
-	# Reserve space for minibatch vectors.
-	minibatch_x = zeros(T, size(X, 1))
-	minibatch_y = zeros(T, size(Y, 1))
-	minibatch_ints = zeros(Int, minibatch_size)
-	minibatch_domain = 1:num_patterns
-	# Perform the required number of iterations of learning.
-	gradient_reset(DN)
-	for iteration = 1:iterations
-		# Increment the gradient information based on the minibatch.
-		sample!(minibatch_domain, minibatch_ints, replace=minibatch_replace)
-		for minibatch_int in minibatch_ints
-			for i = 1:size(X, 1)
-				minibatch_x[i] = X[i, minibatch_int]
-			end
-			for i = 1:size(Y, 1)
-				minibatch_y[i] = Y[i, minibatch_int]
-			end
-			gradient_update(DN, minibatch_x, minibatch_y)
+function train_sgd{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}; XTEST=false, YTEST=false, iterations::Int=1000, iterations_report::Int=100, learning_rate::T=1e-2, minibatch_size::Int=100, minibatch_replace::Bool=true, report::Bool=true)
+	@inbounds begin
+		num_patterns::Int64 = size(X, 2)
+		# Minibatch size cannot be larger than number of patterns when sampling without replacement.
+		if (minibatch_size > num_patterns) && !minibatch_replace
+			minibatch_size = num_patterns
 		end
-		# Update the parameters based on the gradient information.
-		parameters_update(DN, learning_rate_use, zero_gradient=true)
+		# Scale learning rate to account for the size of the minibatch.
+		learning_rate_use::T = learning_rate / T(minibatch_size)
+		# Reserve space for minibatch vectors.
+		minibatch_x = zeros(T, size(X, 1))
+		minibatch_y = zeros(T, size(Y, 1))
+		minibatch_ints = zeros(Int, minibatch_size)
+		minibatch_domain = 1:num_patterns
+		# Create results dataframe if reporting is required.
+		if report
+			if XTEST !== false
+				df = DataFrame(iteration=Int64[], error_training=T[], error_testing=T[])
+			else
+				df = DataFrame(iteration=Int64[], error_training=T[])
+			end
+		end
+		# Perform the required number of iterations of learning.
+		gradient_reset(DN)
+		for iteration = 1:iterations
+			# Increment the gradient information based on the minibatch.
+			sample!(minibatch_domain, minibatch_ints, replace=minibatch_replace)
+			for minibatch_int in minibatch_ints
+				for i = 1:size(X, 1)
+					minibatch_x[i] = X[i, minibatch_int]
+				end
+				for i = 1:size(Y, 1)
+					minibatch_y[i] = Y[i, minibatch_int]
+				end
+				gradient_update(DN, minibatch_x, minibatch_y)
+			end
+			# Update the parameters based on the gradient information.
+			parameters_update(DN, learning_rate_use, zero_gradient=true)
+			# Decide whether to record performance.
+			if report && (iteration % iterations_report == 0)
+				if XTEST !== false
+					row = (iteration, error(DN, X, Y), error(DN, XTEST, YTEST))
+				else
+					row = (iteration, error(DN, X, Y))
+				end
+				push!(df, row)
+				println("Iteration $iteration. Error $(df[end, :error_training]).")
+			end
+		end
+		if report
+			println()
+		end
+	end
+	if report
+		return df
 	end
 end
