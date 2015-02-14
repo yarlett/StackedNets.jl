@@ -7,8 +7,8 @@ function test_deepnet_gradient(; step=1e-8, tol=1e-5)
 	units = _generate_random_units()
 	DN = DeepNet{Float64}(units, error_type="squared_error")
 	# Construct an input / output pair.
-	X = rand(units[1].n)
-	Y = rand(units[end].n)
+	X = rand(units[1].n, 1)
+	Y = rand(units[end].n, 1)
 	# Set gradient information on the pattern and compare it to numerically derived gradients.
 	gradient_update(DN, X, Y)
 	for l = 1:length(DN.layers)
