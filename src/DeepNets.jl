@@ -2,6 +2,7 @@ module DeepNets
 
 	export error,
 	forward,
+	gradient_check,
 	gradient_update,
 	train_sgd,
 	DeepNet,

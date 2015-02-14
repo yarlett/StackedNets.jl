@@ -1,15 +1,12 @@
 using DataFrames
 using StatsBase
 
-include("utils.jl")
-
-### DeepNet type.
 immutable DeepNet{T<:FloatingPoint}
 	layers::Vector{Layer{T}}
 	error_type::ASCIIString
 	error_function!::Function
 
-	function DeepNet(units::Vector{Units}; error_type::ASCIIString="squared_error")
+	function DeepNet(units::Vector{Units}; error_type::ASCIIString="squared_error", scale::T=1e-3)
 		if length(units) < 2
 			return error("DeepNet units specification is too short.")
 		end
@@ -20,7 +17,7 @@ immutable DeepNet{T<:FloatingPoint}
 		layers = Array(Layer{T}, length(units)-1)
 		for u = 1:length(units)-1
 			units1, units2 = units[u], units[u + 1]
-			layers[u] = Layer{T}(units1.n, units2.n, units2.activation_type)
+			layers[u] = Layer{T}(units1.n, units2.n, units2.activation_type, scale=scale)
 		end
 		# Set error function.
 		error_type, error_function! = error_function_selector(error_type)
@@ -29,16 +26,17 @@ immutable DeepNet{T<:FloatingPoint}
 	end
 end
 
+# Returns the error on a specific pattern.
 function error{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}, p::Int)
 	forward(DN, X, p)
 	L = DN.layers[end]
-	DN.error_function!(L.ACT, Y[:, p:p], L.ERR, L.DE_DYH)
-	sum(L.ERR)
+	DN.error_function!(L.ACT, Y[:, p:p], L.E, L.DE_DYH)
+	sum(L.E)
 end
 
 function error{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})
-	E::T = 0.0
 	@inbounds begin
+		E::T = 0.0
 		for p = 1:size(X, 2)
 			E += error(DN, X, Y, p)
 		end
@@ -46,35 +44,70 @@ function error{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})
 	E
 end
 
-# Sets activations in a DeepNet based on a single input pattern.
+# Forward propagate a pattern through a DeepNet.
 function forward{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, p::Int)
-	forward(DN.layers[1], X, p)
-	for l = 2:length(DN.layers)
-		forward(DN.layers[l], DN.layers[l-1].ACT, 1)
+	@inbounds begin
+		forward(DN.layers[1], X, p)
+		for l = 2:length(DN.layers)
+			forward(DN.layers[l], DN.layers[l - 1].ACT, 1)
+		end
 	end
 end
 
 # Returns output activations in a DeepNet for a set of input patterns.
 function forward{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T})
-	no = DN.layers[end].no
-	Y = zeros(T, (no, size(X, 2)))
-	for p = 1:size(X, 2)
-		forward(DN, X, p)
-		for o = 1:no
-			Y[o, p] = DN.layers[end].ACT[o]
+	@inbounds begin
+		no = DN.layers[end].no
+		np = size(X, 2)
+		Y = zeros(T, (no, np))
+		for p = 1:np
+			forward(DN, X, p)
+			Y[:, p] = DN.layers[end].ACT
 		end
 	end
 	Y
 end
 
+# Numerically checks the analytic gradient of a DeepNet and returns a data frame of results.
+function gradient_check{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}; step=1e-6, tolerance=1e-6)
+	# Initialize data frame.
+	df = DataFrame(layer=Int64[], parameter=Int64[], analytic_grad=T[], numerical_grad=T[], absolute_error=T[], ok=Bool[])
+	# Set the gradient information.
+	# Iterate over layers, and parameters within each layer.
+	for l = 1:length(DN.layers)
+		for (M, GM) in ((DN.layers[l].W, DN.layers[l].GW), (DN.layers[l].B, DN.layers[l].GB))
+			for i = 1:length(M)
+				current_parameter_value = M[i]
+				# Get the analytic gradient.
+				gradient_reset(DN)
+				gradient_update(DN, X, Y)
+				analytic_gradient = GM[i]
+				# Get the numerical gradient.
+				M[i] = current_parameter_value - step
+				EN = error(DN, X, Y)
+				M[i] = current_parameter_value + step
+				EP = error(DN, X, Y)
+				numerical_gradient = (EP - EN) / (2.0 * step)
+				M[i] = current_parameter_value
+				# Compare gradient values.
+				absolute_error = abs(analytic_gradient - numerical_gradient)
+				push!(df, (l, i, analytic_gradient, numerical_gradient, absolute_error, absolute_error < tolerance? true : false))
+			end
+		end
+	end
+	df
+end
+
 # Finds the maximum absolute gradient value.
 function gradient_maxabs{T<:FloatingPoint}(DN::DeepNet{T})
-	gmax::T = -Inf
-	for l = 1:length(DN.layers)
-		for M in (DN.layers[l].GW, DN.layers[l].GB)
-			thismaxabs = maximum(abs(M))
-			if thismaxabs > gmax
-				gmax = thismaxabs
+	@inbounds begin
+		gmax::T = -Inf
+		for l = 1:length(DN.layers)
+			for M in (DN.layers[l].GW, DN.layers[l].GB)
+				thismaxabs = maximum(abs(M))
+				if thismaxabs > gmax
+					gmax = thismaxabs
+				end
 			end
 		end
 	end
@@ -83,20 +116,20 @@ end
 
 # Zeros out all the gradient information in a DeepNet.
 function gradient_reset{T<:FloatingPoint}(DN::DeepNet{T})
-	for l = 1:length(DN.layers)
-		L = DN.layers[l]
-		for i = 1:size(L.GW, 1)
-			for j = 1:size(L.GW, 2)
-				L.GW[i, j] = 0.0
+	@inbounds begin
+		for l = 1:length(DN.layers)
+			L = DN.layers[l]
+			for i = 1:length(L.GW)
+				L.GW[i] = 0.0
 			end
-		end
-		for b = 1:length(L.GB)
-			L.GB[b] = 0.0
+			for i = 1:length(L.GB)
+				L.GB[i] = 0.0
+			end
 		end
 	end
 end
 
-# Increment the gradient information (GW and GB) on each layer based on a single input-output pair.
+# Increment the gradient information (GW and GB) on each layer based on a single input-output pattern.
 function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}, p::Int)
 	@inbounds begin
 		# Forward propagate the input pattern through the network.
@@ -106,7 +139,7 @@ function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matr
 			L = DN.layers[l]
 			# Set deltas for output units.
 			if l == length(DN.layers)
-				DN.error_function!(L.ACT, Y, L.ERR, L.DELTA)
+				DN.error_function!(L.ACT, Y[:, p:p], L.E, L.DELTA)
 				for o = 1:L.no
 					L.DELTA[o] *= L.DACT_DNET[o]
 				end
@@ -115,12 +148,12 @@ function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matr
 				for i = 1:Lup.ni
 					L.DELTA[i] = 0.0
 					for o = 1:Lup.no
-						L.DELTA[i] += Lup.W[i, o] * Lup.DELTA[o]
+						L.DELTA[i] += Lup.DELTA[o] * Lup.W[i, o]
 					end
 					L.DELTA[i] *= L.DACT_DNET[i]
 				end
 			end
-			# Update the gradient information.
+			# Increment the gradient information.
 			for o = 1:L.no
 				if l == 1
 					for i = 1:L.ni
@@ -128,7 +161,7 @@ function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matr
 					end
 				else
 					for i = 1:L.ni
-						L.GW[i, o] += DN.layers[l-1].ACT[i, 1] * L.DELTA[o]
+						L.GW[i, o] += DN.layers[l - 1].ACT[i, 1] * L.DELTA[o]
 					end
 				end
 				L.GB[o] += L.DELTA[o]
@@ -147,22 +180,16 @@ function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matr
 end
 
 # Update the parameters of a DeepNet based on the accumulated gradient information.
-function parameters_update{T<:FloatingPoint}(DN::DeepNet{T}, lr::T; zero_gradient=true)
+function parameters_update{T<:FloatingPoint}(DN::DeepNet{T}, lr::T; reset_gradient=true)
 	@inbounds begin
 		for l = 1:length(DN.layers)
 			L = DN.layers[l]
-			for i = 1:size(L.W, 1)
-				for j = 1:size(L.W, 2)
-					L.W[i, j] -= lr * L.GW[i, j]
-					if zero_gradient
-						L.GW[i, j] = 0.0
+			for (M, GM) in ((L.W, L.GW), (L.B, L.GB))
+				for i = 1:length(M)
+					M[i] -= lr * GM[i]
+					if reset_gradient
+						GM[i] = 0.0
 					end
-				end
-			end
-			for b = 1:length(L.B)
-				L.B[b] -= lr * L.GB[b]
-				if zero_gradient
-					L.GB[b] = 0.0
 				end
 			end
 		end
@@ -179,6 +206,8 @@ function train_sgd{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T};
 		# Reserve space for minibatch integers.
 		minibatch_ints = zeros(Int, minibatch_size)
 		minibatch_domain = 1:num_patterns
+		# Adjust the learning rate to account for the size of the minibatch.
+		learning_rate_use = learning_rate / T(minibatch_size)
 		# Create results dataframe if reporting is required.
 		if report
 			if X_testing !== false
@@ -195,9 +224,8 @@ function train_sgd{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T};
 			for minibatch_int in minibatch_ints
 				gradient_update(DN, X, Y, minibatch_int)
 			end
-			println(DN.layers[end].GW)
 			# Update the parameters based on the gradient information.
-			parameters_update(DN, learning_rate, zero_gradient=true)
+			parameters_update(DN, learning_rate_use, reset_gradient=true)
 			# Decide whether to record performance.
 			if report && (iteration % iterations_report == 0)
 				if X_testing !== false

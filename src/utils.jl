@@ -7,22 +7,10 @@ function get_layer_parameters{T<:FloatingPoint}(ni::Int, no::Int; scale::T=1e-3)
 		end
 	end
 	# Initialize bias units.
-	B = zeros(T, no)
+	B = zeros(T, (no, 1))
 	for i = 1:length(B)
 		B[i] += scale * randn()
 	end
 	# Return.
 	W, B
-end
-
-function minibatch_assign!{T<:FloatingPoint}(MMB::Matrix{T}, M::Matrix{T}, mcols::Vector{Int})
-	@inbounds begin
-		I = size(M, 1)
-		for j = 1:length(mcols)
-			mcol = mcols[j]
-			for i = 1:I
-				MMB[i, j] = M[i, mcol]
-			end
-		end
-	end
 end

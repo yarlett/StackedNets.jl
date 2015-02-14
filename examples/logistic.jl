@@ -25,6 +25,7 @@ println()
 # Define logistic classifier model in DeepNets (logistic classifier has 784 input units and 1 sigmoid output unit).
 logistic_units = [Units(size(xtr, 1)), Units(1, activation_type="sigmoid")]
 logistic_deepnet = DeepNet{Float64}(logistic_units, error_type="cross_entropy")
+println("Intial training error is $(error(logistic_deepnet, xtr, ytr)).")
 
 # Perform stochastic gradient descent.
 @time df = train_sgd(
@@ -33,10 +34,10 @@ logistic_deepnet = DeepNet{Float64}(logistic_units, error_type="cross_entropy")
 	ytr,
 	X_testing=xte,
 	Y_testing=yte,
-	iterations=100,
+	iterations=1000,
 	iterations_report=1,
-	learning_rate=1e5,
-	minibatch_size=100,
+	learning_rate=1e-6,
+	minibatch_size=1000,
 	minibatch_replace=true,
 	report=true
 )

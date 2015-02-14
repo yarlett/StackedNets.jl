@@ -1,5 +1,3 @@
-### Units type.
-
 immutable Units
 	n::Int
 	activation_type::ASCIIString
