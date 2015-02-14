@@ -27,7 +27,19 @@ logistic_units = [Units(size(xtr, 1)), Units(1, activation_type="sigmoid")]
 logistic_deepnet = DeepNet{Float64}(logistic_units, error_type="cross_entropy")
 
 # Perform stochastic gradient descent.
-@time df = train_sgd(logistic_deepnet, xtr, ytr, x_testing=xte, y_testing=yte, iterations=10000, iterations_report=1000, learning_rate=1e-6, minibatch_size=200, minibatch_replace=true, report=true)
+@time df = train_sgd(
+	logistic_deepnet,
+	xtr,
+	ytr,
+	X_testing=xte,
+	Y_testing=yte,
+	iterations=100,
+	iterations_report=1,
+	learning_rate=1e5,
+	minibatch_size=100,
+	minibatch_replace=true,
+	report=true
+)
 println()
 println(df)
 println()

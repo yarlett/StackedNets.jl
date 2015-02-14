@@ -14,6 +14,7 @@ immutable Layer{T<:FloatingPoint}
 	DACT_DNET::Matrix{T}
 	DELTA::Matrix{T}
 	ERR::Matrix{T}
+	DE_DYH::Matrix{T}
 	activation::ASCIIString
 	activation_function!::Function
 
@@ -29,10 +30,11 @@ immutable Layer{T<:FloatingPoint}
 			DACT_DNET = zeros(T, (no, 1))
 			DELTA = zeros(T, (no, 1))
 			ERR = zeros(T, (no, 1))
+			DE_DYH = zeros(T, (no, 1))
 			# Set activation function for layer.
 			activation, activation_function! = activation_function_selector(activation_type)
 			# Create and return the object.
-			new(ni, no, W, B, GW, GB, NET, ACT, DACT_DNET, DELTA, ERR, activation, activation_function!)
+			new(ni, no, W, B, GW, GB, NET, ACT, DACT_DNET, DELTA, ERR, DE_DYH, activation, activation_function!)
 		else
 			error("Invalid number of units used to initialize Layer object (ni=$ni; no=$no) to create Layer object.")
 		end
