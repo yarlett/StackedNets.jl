@@ -2,20 +2,39 @@ using DeepNets
 using Base.Test
 
 # Function to numerically check the analytic error gradients.
-function test_deepnet_gradient()
+function test_deepnet_gradient(; cases::Int=1)
 	for error_type in ("squared_error", "cross_entropy")
-		# Construct a deep network.
-		units = _generate_random_units()
-		DN = DeepNet{Float64}(units, error_type=error_type, scale=1e-1)
-		# Construct an input / output pair.
-		X = rand(units[1].n, 1)
-		Y = rand(units[end].n, 1)
-		# Set gradient information on the pattern and compare it to numerically derived gradients.
-		results = gradient_check(DN, X, Y)
-		ok, notok = sum(results[:ok]), sum(!results[:ok])
-		println(results[!results[:ok], :])
-		println("$ok/$(ok+notok) gradient checks passed.")
-		@test sum(!results[:ok]) == 0
+		for activation_type in ["exponential", "linear", "rectified_linear", "sigmoid", "softmax", "softplus", "tanh"]
+			println("Testing $activation_type units with $error_type errors.")
+			# Construct a deep network.
+
+			num_inputs = 10
+			num_outputs = 5
+			units = [Units(10), Units(10, activation_type="sigmoid"), Units(10, activation_type="softmax")]
+
+			# num_inputs = rand(1:100)
+			# num_outputs = rand(1:20)
+			# units = [Units(num_inputs)]
+			# for i = rand(1:10)
+			# 	push!(units, Units(rand(1:100), activation_type=activation_type))
+			# end
+			# if error_type == "cross_entropy"
+			# 	push!(units, Units(5, activation_type="softmax"))
+			# end
+			DN = DeepNet{Float64}(units, error_type=error_type, scale=1e-1)
+			# Construct input / output cases.
+			X = rand(units[1].n, cases)
+			Y = rand(units[end].n, cases)
+			# Set gradient information on the pattern and compare it to numerically derived gradients.
+			results = gradient_check(DN, X, Y)
+			ok, notok = sum(results[:ok]), sum(!results[:ok])
+			if notok > 0
+				println(results[!results[:ok], :])
+			end
+			println("$ok/$(ok+notok) gradient checks passed.")
+			println()
+			@test sum(!results[:ok]) == 0
+		end
 	end
 end
 

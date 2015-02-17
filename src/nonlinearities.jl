@@ -70,24 +70,17 @@ end
 
 function activation_softmax!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
 	@inbounds begin
-		I, J = size(NET)
-		for j = 1:J
-			# Get maximum net value.
-			netmax::T = -Inf
-			for i = 1:I
-				if NET[i, j] > netmax
-					netmax = NET[i, j]
-				end
-			end
+		for j = 1:size(NET, 2)
+			maxnet = maximum(NET[:, j])
 			# Get sum of exponentials.
-			expsum::T = 0.0
-			for i = 1:I
-				ACT[i, j] = exp(NET[i, j] - netmax)
+			expsum = 0.0
+			for i = 1:size(NET, 1)
+				ACT[i, j] = exp(NET[i, j] - maxnet)
 				expsum += ACT[i, j]
 			end
-			# Compute normalized activations and gradient information.
-			for i = 1:I
-				ACT[i, j] = ACT[i, j] / expsum
+			# Set activations and gradients.
+			for i = 1:size(NET, 1)
+				ACT[i, j] /= expsum
 				DACT_DNET[i, j] = ACT[i, j] * (1.0 - ACT[i, j])
 			end
 		end
@@ -130,11 +123,10 @@ end
 
 function cross_entropy!{T<:FloatingPoint}(YH::Matrix{T}, Y::Matrix{T}, E::Matrix{T}, DE_DYH::Matrix{T})
 	@inbounds begin
-		for j = 1:size(YH, 2)
-			for i = 1:size(YH, 1)
-				y, yh = Y[i, j], YH[i, j]
-				E[i, j] = -((y * log(yh)) + ((1.0-y) * log(1.0-yh)))
-				DE_DYH[i, j] = ((1.0-y) / (1.0-yh)) - (y/yh)
+		for j = 1:size(Y, 2)
+			for i = 1:size(Y, 1)
+				E[i, j] = -((Y[i, j] * log(YH[i, j])) + ((1.0 - Y[i, j]) * log(1.0 - YH[i, j])))
+				DE_DYH[i, j] = ((1.0 - Y[i, j]) / (1.0 - YH[i, j])) - (Y[i, j] / YH[i, j])
 			end
 		end
 	end
@@ -142,8 +134,8 @@ end
 
 function squared_error!{T<:FloatingPoint}(YH::Matrix{T}, Y::Matrix{T}, E::Matrix{T}, DE_DYH::Matrix{T})
 	@inbounds begin
-		for j = 1:size(YH, 2)
-			for i = 1:size(YH, 1)
+		for j = 1:size(Y, 2)
+			for i = 1:size(Y, 1)
 				E[i, j] = 0.5 * abs2(YH[i, j] - Y[i, j])
 				DE_DYH[i, j] = YH[i, j] - Y[i, j]
 			end
