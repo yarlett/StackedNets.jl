@@ -148,7 +148,7 @@ function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matr
 					L.DELTA[o] *= L.DACT_DNET[o]
 				end
 			else
-				Lup = DN.layers[l+1]
+				Lup = DN.layers[l + 1]
 				for i = 1:Lup.ni
 					L.DELTA[i] = 0.0
 					for o = 1:Lup.no

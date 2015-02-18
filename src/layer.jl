@@ -48,8 +48,35 @@ function forward{T<:FloatingPoint}(L::Layer{T}, IN::Matrix{T}, p::Int)
 			for i = 1:L.ni
 				L.NET[o] += IN[i, p] * L.W[i, o]
 			end
-			# Apply nonlinearity and set gradient information related to nonlinearity.
-			L.activation_function!(L.NET, L.ACT, L.DACT_DNET)
 		end
+		# Set activations and gradient information related to activations.
+		L.activation_function!(L.NET, L.ACT, L.DACT_DNET)
+		print(L, IN)
 	end
+end
+
+function print{T<:FloatingPoint}(L::Layer{T}, IN::Matrix{T})
+	println("IN")
+	println(IN)
+	println("W")
+	println(L.W)
+	println("B")
+	println(L.B)
+	println("NET")
+	println(L.NET)
+	println("ACT")
+	println(L.ACT)
+	println("DACT_DNET")
+	println(L.DACT_DNET)
+	println("DELTA")
+	println(L.DELTA)
+	println("E")
+	println(L.E)
+	println("DE_DYH")
+	println(L.DE_DYH)
+	println("GW")
+	println(L.GW)
+	println("GB")
+	println(L.GB)
+	println()
 end

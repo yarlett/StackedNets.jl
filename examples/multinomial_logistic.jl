@@ -22,7 +22,7 @@ println()
 
 # Define multinomial logistic classifier model in DeepNets.
 units = [Units(size(XTR, 1)), Units(10, activation_type="softmax")]
-deepnet = DeepNet{Float64}(units, error_type="squared_error")
+deepnet = DeepNet{Float64}(units, error_type="cross_entropy")
 println("Intial training error is $(error(deepnet, XTR, YTR)).")
 println()
 
@@ -49,7 +49,7 @@ end
 	Y_testing=YTE,
 	custom_loss=error_percent,
 	iterations=10000,
-	iterations_report=100,
+	iterations_report=1000,
 	learning_rate=1e-5,
 	minibatch_size=100,
 	minibatch_replace=true,

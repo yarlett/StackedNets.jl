@@ -8,9 +8,7 @@ function test_deepnet_gradient(; cases::Int=1)
 			println("Testing $activation_type units with $error_type errors.")
 			# Construct a deep network.
 
-			num_inputs = 10
-			num_outputs = 5
-			units = [Units(10), Units(10, activation_type="sigmoid"), Units(10, activation_type="softmax")]
+			units = [Units(2), Units(2, activation_type="softmax")]
 
 			# num_inputs = rand(1:100)
 			# num_outputs = rand(1:20)
@@ -21,6 +19,7 @@ function test_deepnet_gradient(; cases::Int=1)
 			# if error_type == "cross_entropy"
 			# 	push!(units, Units(5, activation_type="softmax"))
 			# end
+
 			DN = DeepNet{Float64}(units, error_type=error_type, scale=1e-1)
 			# Construct input / output cases.
 			X = rand(units[1].n, cases)
