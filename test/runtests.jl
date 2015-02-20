@@ -3,22 +3,11 @@ using Base.Test
 
 # Function to numerically check the analytic error gradients.
 function test_deepnet_gradient(; cases::Int=1)
-	for error in ("squared_error", "cross_entropy")
-		for activation in ["linear", "sigmoid", "softmax"]
+	for activation in ["exponential", "linear", "rectified_linear", "sigmoid", "softmax", "softplus", "tanh"]
+		for error in ("squared_error", "cross_entropy")
 			println("Testing $activation units with $error errors.")
-			# Construct a deep network.
-
-			units = [Units(2), Units(2, activation=activation)]
-			# num_inputs = rand(1:100)
-			# num_outputs = rand(1:20)
-			# units = [Units(num_inputs)]
-			# for i = rand(1:10)
-			# 	push!(units, Units(rand(1:100), activation_type=activation_type))
-			# end
-			if error == "cross_entropy"
-				push!(units, Units(5, activation="softmax"))
-			end
-
+			# Construct a random deep network based on the activation and error types.
+			units = _generate_random_unit_list(activation, error)
 			DN = DeepNet{Float64}(units, error=error, scale=1e-1)
 			# Construct input / output cases.
 			X = rand(units[1].n, cases)
@@ -37,13 +26,16 @@ function test_deepnet_gradient(; cases::Int=1)
 end
 
 # Generates random arrays of units for testing purposes.
-function _generate_random_units()
-	activations = ["exponential", "linear", "rectified_linear", "sigmoid", "softmax", "softplus", "tanh"]
+function _generate_random_unit_list(activation, error)
+	# Create a random number of layers of units with the required activation function.
 	units = Units[Units(rand(2:20))]
-	for u = 1:rand(1:20)
-		push!(units, Units(rand(2:20), activation_type=activations[rand(1:length(activations))]))
+	for u = 1:rand(1:10)
+		push!(units, Units(rand(2:20), activation=activation))
 	end
-	push!(units, Units(5, activation_type="sigmoid"))
+	# If error is cross_entropy, add a final layer to ensure outputs are probabilities.
+	if error == "cross_entropy"
+		push!(units, Units(rand(1:20), activation="softmax"))
+	end
 	units
 end
 

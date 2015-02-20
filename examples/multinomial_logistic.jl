@@ -21,13 +21,8 @@ println("Testing  data: X has size $(size(XTE)); Y has size $(size(YTE)).")
 println()
 
 # Define multinomial logistic classifier model in DeepNets.
-<<<<<<< Updated upstream
 units = [Units(size(XTR, 1)), Units(10, activation="softmax")]
 deepnet = DeepNet{Float64}(units, error="cross_entropy")
-=======
-units = [Units(size(XTR, 1)), Units(10, activation_type="sigmoid")]
-deepnet = DeepNet{Float64}(units, error_type="cross_entropy")
->>>>>>> Stashed changes
 println("Intial training error is $(error(deepnet, XTR, YTR)).")
 println()
 

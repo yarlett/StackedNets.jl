@@ -8,9 +8,10 @@ module DeepNets
 	DeepNet,
 	Units
 
+	include("activation_functions.jl")
 	include("layer.jl")
 	include("deepnet.jl")
-	include("nonlinearities.jl")
+	include("error_functions.jl")
 	include("units.jl")
 	include("utils.jl")
 end
