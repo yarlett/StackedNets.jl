@@ -3,24 +3,23 @@ using Base.Test
 
 # Function to numerically check the analytic error gradients.
 function test_deepnet_gradient(; cases::Int=1)
-	for error_type in ("squared_error", "cross_entropy")
-		for activation_type in ["exponential", "linear", "rectified_linear", "sigmoid", "softmax", "softplus", "tanh"]
-			println("Testing $activation_type units with $error_type errors.")
+	for error in ("squared_error", "cross_entropy")
+		for activation in ["linear", "sigmoid", "softmax"]
+			println("Testing $activation units with $error errors.")
 			# Construct a deep network.
 
-			units = [Units(2), Units(2, activation_type="softmax")]
-
+			units = [Units(2), Units(2, activation=activation)]
 			# num_inputs = rand(1:100)
 			# num_outputs = rand(1:20)
 			# units = [Units(num_inputs)]
 			# for i = rand(1:10)
 			# 	push!(units, Units(rand(1:100), activation_type=activation_type))
 			# end
-			# if error_type == "cross_entropy"
-			# 	push!(units, Units(5, activation_type="softmax"))
-			# end
+			if error == "cross_entropy"
+				push!(units, Units(5, activation="softmax"))
+			end
 
-			DN = DeepNet{Float64}(units, error_type=error_type, scale=1e-1)
+			DN = DeepNet{Float64}(units, error=error, scale=1e-1)
 			# Construct input / output cases.
 			X = rand(units[1].n, cases)
 			Y = rand(units[end].n, cases)

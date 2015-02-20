@@ -1,14 +1,14 @@
 immutable Units
 	n::Int
-	activation_type::ASCIIString
+	activation::ASCIIString
 	activation_function!::Function
 
-	function Units(n::Int; activation_type::ASCIIString="linear")
+	function Units(n::Int; activation::ASCIIString="linear")
 		if n > 0
 			# Set activation function for layer.
-			activation_type, activation_function! = activation_function_selector(activation_type)
+			activation, activation_function! = activation_function_selector(activation)
 			# Create and return the object.
-			new(n, activation_type, activation_function!)
+			new(n, activation, activation_function!)
 		else
 			error("Invalid number of units used to initialize Unit object (n=$n).")
 		end

@@ -21,8 +21,8 @@ println("Testing  data: X has size $(size(XTE)); Y has size $(size(YTE)).")
 println()
 
 # Define multinomial logistic classifier model in DeepNets.
-units = [Units(size(XTR, 1)), Units(10, activation_type="softmax")]
-deepnet = DeepNet{Float64}(units, error_type="cross_entropy")
+units = [Units(size(XTR, 1)), Units(10, activation="softmax")]
+deepnet = DeepNet{Float64}(units, error="cross_entropy")
 println("Intial training error is $(error(deepnet, XTR, YTR)).")
 println()
 
@@ -48,9 +48,9 @@ end
 	X_testing=XTE,
 	Y_testing=YTE,
 	custom_loss=error_percent,
-	iterations=10000,
+	iterations=100000,
 	iterations_report=1000,
-	learning_rate=1e-5,
+	learning_rate=1e-6,
 	minibatch_size=100,
 	minibatch_replace=true,
 	report=true

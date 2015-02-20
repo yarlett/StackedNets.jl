@@ -1,119 +1,146 @@
 ### Activation functions.
 
-function activation_function_selector(activation_type::ASCIIString)
-	if activation_type == "exponential"
-		return ("exponential", activation_exponential!)
-	elseif activation_type == "rectified_linear"
-		return ("rectified_linear", activation_rectified_linear!)
-	elseif activation_type == "sigmoid"
-		return ("sigmoid", activation_sigmoid!)
-	elseif activation_type == "softmax"
-		return ("softmax", activation_softmax!)
-	elseif activation_type == "softplus"
-		return ("softplus", activation_softplus!)
-	elseif activation_type == "tanh"
-		return ("tanh", activation_tanh!)
+function activation_function_selector(activation::ASCIIString)
+	if activation == "sigmoid"
+		return "sigmoid", sigmoid_activation!, sigmoid_jacobian
+	elseif activation == "softmax"
+		return "softmax", softmax_activation!, softmax_jacobian
+	# Else default to linear activations.
 	else
-		return ("linear", activation_linear!)
+		return "linear", linear_activation!, linear_jacobian
 	end
+	# To be implemented:
+	# exponential, leaky_rectified_linear, rectified_linear, softplus, tanh
 end
 
-function activation_exponential!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
-	@inbounds begin
-		for j = 1:size(NET, 2)
-			for i = 1:size(NET, 1)
-				expnet = exp(NET[i, j])
-				ACT[i, j] = expnet
-				DACT_DNET[i, j] = expnet
-			end
-		end
-	end
-end
-
-function activation_linear!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
+function linear_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
 	@inbounds begin
 		for j = 1:size(NET, 2)
 			for i = 1:size(NET, 1)
 				ACT[i, j] = NET[i, j]
-				DACT_DNET[i, j] = 1.0
 			end
-		end
+		end	
 	end
 end
 
-function activation_rectified_linear!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
-	@inbounds begin
-		for j = 1:size(NET, 2)
-			for i = 1:size(NET, 1)
-				if NET[i, j] > 0.0
-					ACT[i, j] = NET[i, j]
-					DACT_DNET[i, j] = 1.0
-				else
-					ACT[i, j] = 0.0
-					DACT_DNET[i, j] = 0.0
-				end
-			end
-		end
-	end
+function linear_jacobian{T<:FloatingPoint}(o::Int, oo::Int, NET::Vector{T}, ACT::Vector{T})
+	o == oo ? 1.0 : 0.0
 end
 
-function activation_sigmoid!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
+function sigmoid_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
 	@inbounds begin
 		for j = 1:size(NET, 2)
 			for i = 1:size(NET, 1)
 				ACT[i, j] = 1.0 / (1.0 + exp(-NET[i, j]))
-				DACT_DNET[i, j] = ACT[i, j] * (1.0 - ACT[i, j])
 			end
-		end
+		end	
 	end
 end
 
-function activation_softmax!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
+function sigmoid_jacobian{T<:FloatingPoint}(o::Int, oo::Int, NET::Vector{T}, ACT::Vector{T})
+	o == oo ? ACT[o] * (1.0 - ACT[o]) : 0.0
+end
+
+function softmax_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
 	@inbounds begin
 		for j = 1:size(NET, 2)
+			# Get maximum net value (for numerical stability).
+			maxnet = -Inf
+			for i = 1:size(NET, 1)
+				if NET[i, j] > maxnet
+					maxnet = NET[i, j]
+				end
+			end
 			# Get sum of exponentials.
 			expsum = 0.0
 			for i = 1:size(NET, 1)
-				ACT[i, j] = exp(NET[i, j])
+				ACT[i, j] = exp(NET[i, j] - maxnet)
 				expsum += ACT[i, j]
 			end
-			# Set activations and gradients.
+			# Set activations.
 			for i = 1:size(NET, 1)
-				ACT[i, j] = ACT[i, j] / expsum
-				#DACT_DNET[i, j] = ACT[i, j] * (1.0 - ACT[i, j])
+				ACT[i, j] /= expsum
 			end
 		end
 	end
 end
 
-function activation_softplus!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
-	@inbounds begin
-		expx::T = 0.0
-		for j = 1:size(NET, 2)
-			for i = 1:size(NET, 1)
-				expx = exp(NET[i, j])
-				ACT[i, j] = log(1.0 + expx)
-				DACT_DNET[i, j] = expx / (1.0 + expx)
-			end
-		end
+function softmax_jacobian{T<:FloatingPoint}(o::Int, oo::Int, NET::Vector{T}, ACT::Vector{T})
+	if o == oo
+		return ACT[o] * (1.0 - ACT[o])
+	else
+		return -ACT[o] * ACT[oo]
 	end
 end
 
-function activation_tanh!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
-	@inbounds begin
-		for j = 1:size(NET, 2)
-			for i = 1:size(NET, 1)
-				ACT[i, j] = tanh(NET[i, j])
-				DACT_DNET[i, j] = 1.0 - (ACT[i, j] * ACT[i, j])
-			end
-		end
-	end
-end
+
+# function activation_exponential!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
+# 	@inbounds begin
+# 		for j = 1:size(NET, 2)
+# 			for i = 1:size(NET, 1)
+# 				expnet = exp(NET[i, j])
+# 				ACT[i, j] = expnet
+# 				DACT_DNET[i, j] = expnet
+# 			end
+# 		end
+# 	end
+# end
+#
+# function activation_linear!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
+# 	@inbounds begin
+# 		for j = 1:size(NET, 2)
+# 			for i = 1:size(NET, 1)
+# 				ACT[i, j] = NET[i, j]
+# 				DACT_DNET[i, j] = 1.0
+# 			end
+# 		end
+# 	end
+# end
+#
+# function activation_rectified_linear!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
+# 	@inbounds begin
+# 		for j = 1:size(NET, 2)
+# 			for i = 1:size(NET, 1)
+# 				if NET[i, j] > 0.0
+# 					ACT[i, j] = NET[i, j]
+# 					DACT_DNET[i, j] = 1.0
+# 				else
+# 					ACT[i, j] = 0.0
+# 					DACT_DNET[i, j] = 0.0
+# 				end
+# 			end
+# 		end
+# 	end
+# end
+#
+# function activation_softplus!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
+# 	@inbounds begin
+# 		expx::T = 0.0
+# 		for j = 1:size(NET, 2)
+# 			for i = 1:size(NET, 1)
+# 				expx = exp(NET[i, j])
+# 				ACT[i, j] = log(1.0 + expx)
+# 				DACT_DNET[i, j] = expx / (1.0 + expx)
+# 			end
+# 		end
+# 	end
+# end
+#
+# function activation_tanh!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
+# 	@inbounds begin
+# 		for j = 1:size(NET, 2)
+# 			for i = 1:size(NET, 1)
+# 				ACT[i, j] = tanh(NET[i, j])
+# 				DACT_DNET[i, j] = 1.0 - (ACT[i, j] * ACT[i, j])
+# 			end
+# 		end
+# 	end
+# end
 
 ### Error functions.
 
-function error_function_selector(error_type::ASCIIString)
-	if error_type == "cross_entropy"
+function error_function_selector(error::ASCIIString)
+	if error == "cross_entropy"
 		return ("cross_entropy", cross_entropy!)
 	else
 		return ("squared_error", squared_error!)
