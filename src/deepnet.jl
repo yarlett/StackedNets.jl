@@ -141,38 +141,77 @@ function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matr
 		# Backpropagate the deltas for each unit in the network.
 		for l = length(DN.layers):-1:1
 			L = DN.layers[l]
-			# Set deltas for output units.
+			# Propagate deltas backward.
 			if l == length(DN.layers)
-				DN.error_function!(L.ACT, Y[:, p:p], L.E, L.DELTA)
-				for o = 1:L.no
-					L.DELTA[o] *= L.DACT_DNET[o]
-				end
+				
+				# Set errors.
+				# for e = 1:length(L.E)
+				# 	L.E[e] = L.ACT[e, 1] - Y[e, p]
+				# end
+				DN.error_function!(L.ACT, Y[:, p:p], L.CRAP, L.DE_DYH)
+				
+				backward(L, L.DE_DYH, 1)
 			else
 				Lup = DN.layers[l + 1]
-				for i = 1:Lup.ni
-					L.DELTA[i] = 0.0
-					for o = 1:Lup.no
-						L.DELTA[i] += Lup.DELTA[o] * Lup.W[i, o]
-					end
-					L.DELTA[i] *= L.DACT_DNET[i]
-				end
+				backward(L, Lup.DELTA, 1)
 			end
 			# Increment the gradient information.
 			for o = 1:L.no
 				if l == 1
 					for i = 1:L.ni
-						L.GW[i, o] += X[i, p] * L.DELTA[o]
+						L.GW[i, o] += X[i, p] * L.DE_DNET[o]
 					end
 				else
 					for i = 1:L.ni
-						L.GW[i, o] += DN.layers[l - 1].ACT[i, 1] * L.DELTA[o]
+						L.GW[i, o] += DN.layers[l - 1].ACT[i, 1] * L.DE_DNET[o]
 					end
 				end
-				L.GB[o] += L.DELTA[o]
+				L.GB[o] += L.DE_DNET[o]
 			end
 		end
 	end
 end
+
+# # Increment the gradient information (GW and GB) on each layer based on a single input-output pattern.
+# function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}, p::Int)
+# 	@inbounds begin
+# 		# Forward propagate the input pattern through the network.
+# 		forward(DN, X, p)
+# 		# Backpropagate the deltas for each unit in the network.
+# 		for l = length(DN.layers):-1:1
+# 			L = DN.layers[l]
+# 			# Set deltas for output units.
+# 			if l == length(DN.layers)
+# 				DN.error_function!(L.ACT, Y[:, p:p], L.E, L.DELTA)
+# 				for o = 1:L.no
+# 					L.DELTA[o] *= L.DACT_DNET[o]
+# 				end
+# 			else
+# 				Lup = DN.layers[l + 1]
+# 				for i = 1:Lup.ni
+# 					L.DELTA[i] = 0.0
+# 					for o = 1:Lup.no
+# 						L.DELTA[i] += Lup.DELTA[o] * Lup.W[i, o]
+# 					end
+# 					L.DELTA[i] *= L.DACT_DNET[i]
+# 				end
+# 			end
+# 			# Increment the gradient information.
+# 			for o = 1:L.no
+# 				if l == 1
+# 					for i = 1:L.ni
+# 						L.GW[i, o] += X[i, p] * L.DELTA[o]
+# 					end
+# 				else
+# 					for i = 1:L.ni
+# 						L.GW[i, o] += DN.layers[l - 1].ACT[i, 1] * L.DELTA[o]
+# 					end
+# 				end
+# 				L.GB[o] += L.DELTA[o]
+# 			end
+# 		end
+# 	end
+# end
 
 # Increment the gradient information (GW and GB) on each layer based on a set of input-output pairs.
 function gradient_update{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})

@@ -71,17 +71,16 @@ end
 function activation_softmax!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T}, DACT_DNET::Matrix{T})
 	@inbounds begin
 		for j = 1:size(NET, 2)
-			maxnet = maximum(NET[:, j])
 			# Get sum of exponentials.
 			expsum = 0.0
 			for i = 1:size(NET, 1)
-				ACT[i, j] = exp(NET[i, j] - maxnet)
+				ACT[i, j] = exp(NET[i, j])
 				expsum += ACT[i, j]
 			end
 			# Set activations and gradients.
 			for i = 1:size(NET, 1)
-				ACT[i, j] /= expsum
-				DACT_DNET[i, j] = ACT[i, j] * (1.0 - ACT[i, j])
+				ACT[i, j] = ACT[i, j] / expsum
+				#DACT_DNET[i, j] = ACT[i, j] * (1.0 - ACT[i, j])
 			end
 		end
 	end
