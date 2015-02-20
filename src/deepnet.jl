@@ -85,7 +85,7 @@ function gradient_check{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matri
 				gradient_reset!(DN)
 				gradient_update!(DN, X, Y)
 				# Get the analytic gradient (scale it to reflect patternwise gradient).
-				analytic_gradient = GM[i] / T(size(X, 2))
+				analytic_gradient = GM[i] / size(X, 2)
 				# Get the numerical gradient.
 				M[i] = current_parameter_value - step
 				EN = error!(DN, X, Y)
