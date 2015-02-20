@@ -12,8 +12,6 @@ function cross_entropy!{T<:FloatingPoint}(YH::Matrix{T}, Y::Matrix{T}, E::Matrix
 	@inbounds begin
 		for j = 1:size(Y, 2)
 			for i = 1:size(Y, 1)
-				
-				
 				E[i, j] = -((Y[i, j] * log(YH[i, j] + eta)) + ((1.0 - Y[i, j]) * log(1.0 - YH[i, j] + eta)))
 				DE_DYH[i, j] = ((1.0 - Y[i, j]) / (1.0 - YH[i, j] + eta)) - (Y[i, j] / (YH[i, j] + eta))
 			end
