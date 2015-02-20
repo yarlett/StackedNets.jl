@@ -73,7 +73,7 @@ function forward{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T})
 end
 
 # Numerically checks the analytic gradient of a DeepNet and returns a data frame of results.
-function gradient_check{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}; step=1e-6, tolerance=1e-6)
+function gradient_check{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}; step=1e-8, tolerance=1e-6)
 	# Initialize data frame.
 	df = DataFrame(layer=Int64[], parameter=Int64[], analytic_grad=T[], numerical_grad=T[], absolute_error=T[], ok=Bool[])
 	# Iterate over layers, and parameters within each layer.
