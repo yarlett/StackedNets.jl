@@ -13,8 +13,10 @@ end
 
 # Load MNIST training and testing data.
 XTR, YTR = traindata()
+XTR ./= 255.0
 YTR = digits_to_indicators(YTR)
 XTE, YTE = testdata()
+XTE ./= 255.0
 YTE = digits_to_indicators(YTE)
 println("Training data: X has size $(size(XTR)); Y has size $(size(YTR)).")
 println("Testing  data: X has size $(size(XTE)); Y has size $(size(YTE)).")
@@ -23,10 +25,10 @@ println()
 # Define multinomial logistic classifier model in DeepNets.
 units = [Units(size(XTR, 1)), Units(10, activation="softmax")]
 deepnet = DeepNet{Float64}(units, error="cross_entropy")
-println("Intial training error is $(error(deepnet, XTR, YTR)).")
+println("Intial training error is $(error!(deepnet, XTR, YTR)).")
 println()
 
-# Define a custom error function (non-differentiable so we can't use it in learning).
+# Define a custom error function (non-differentiable so we can't optimize it during learning).
 function error_percent(YH::Matrix{Float64}, Y::Matrix{Float64})
 	error = 0.0
 	for j = 1:size(YH, 2)
@@ -41,19 +43,18 @@ function error_percent(YH::Matrix{Float64}, Y::Matrix{Float64})
 end
 
 # Perform stochastic gradient descent on the deep net.
-@time df = train_sgd(
+@time df = train_sgd!(
 	deepnet,
 	XTR,
 	YTR,
 	X_testing=XTE,
 	Y_testing=YTE,
-	custom_loss=error_percent,
-	iterations=100000,
+	custom_error=error_percent,
+	iterations=10000,
 	iterations_report=1000,
-	learning_rate=1e-6,
+	learning_rate=1e-2,
 	minibatch_size=100,
 	minibatch_replace=true,
-	report=true
 )
 println()
 println(df)

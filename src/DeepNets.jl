@@ -1,10 +1,10 @@
 module DeepNets
 
-	export error,
-	forward,
+	export error!,
+	forward!,
 	gradient_check,
-	gradient_update,
-	train_sgd,
+	gradient_update!,
+	train_sgd!,
 	DeepNet,
 	Units
 

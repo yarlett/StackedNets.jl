@@ -41,7 +41,7 @@ function error!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})
 		for p = 1:size(X, 2)
 			E += error!(DN, X, Y, p)
 		end
-		E /= T(size(X, 2))
+		E /= size(X, 2)
 	end
 	E
 end
@@ -149,17 +149,21 @@ function gradient_update!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Mat
 				Lup = DN.layers[l + 1]
 				backward!(L, Lup.DELTAS)
 			end
-			# Increment the gradient information.
-			for o = 1:L.no
-				if l == 1
-					IN = X[:, p]
-				else
-					IN = DN.layers[l - 1].ACT[:, 1]
+			# Increment the gradient information for the layer's parameters.
+			if l == 1
+				for o = 1:L.no
+					for i = 1:L.ni
+						L.GW[i, o] += X[i, p] * L.DE_DNET[o]
+					end
+					L.GB[o] += L.DE_DNET[o]
 				end
-				for i = 1:L.ni
-					L.GW[i, o] += IN[i] * L.DE_DNET[o]
+			else
+				for o = 1:L.no
+					for i = 1:L.ni
+						L.GW[i, o] += DN.layers[l - 1].ACT[i, 1] * L.DE_DNET[o]
+					end
+					L.GB[o] += L.DE_DNET[o]
 				end
-				L.GB[o] += L.DE_DNET[o]
 			end
 		end
 	end
@@ -191,7 +195,7 @@ function parameters_update!{T<:FloatingPoint}(DN::DeepNet{T}, lr::T; reset_gradi
 	end
 end
 
-function train_sgd!{T<:FloatingPoint}(DN::DeepNet{T}, X_training::Matrix{T}, Y_training::Matrix{T}; X_testing=false, Y_testing=false, custom_loss::Function=nil, iterations::Int=1000, iterations_report::Int=100, learning_rate::T=1e-2, minibatch_size::Int=100, minibatch_replace::Bool=true, report::Bool=true)
+function train_sgd!{T<:FloatingPoint}(DN::DeepNet{T}, X_training::Matrix{T}, Y_training::Matrix{T}; X_testing=false, Y_testing=false, custom_error::Function=nothing, iterations::Int=1000, iterations_report::Int=100, learning_rate::T=1e-2, minibatch_size::Int=100, minibatch_replace::Bool=true, report::Bool=true)
 	@inbounds begin
 		num_patterns::Int64 = size(X_training, 2)
 		# Minibatch size cannot be larger than number of patterns when sampling without replacement.
@@ -202,41 +206,37 @@ function train_sgd!{T<:FloatingPoint}(DN::DeepNet{T}, X_training::Matrix{T}, Y_t
 		minibatch_ints = zeros(Int, minibatch_size)
 		minibatch_domain = 1:num_patterns
 		# Adjust the learning rate to account for the size of the minibatch.
-		learning_rate_use = learning_rate / T(minibatch_size)
+		learning_rate_use = learning_rate / minibatch_size
 		# Create results dataframe if reporting is required.
-		if report
-			df = DataFrame(iteration=Int64[], error_training=T[], error_testing=T[], custom_loss_training=T[], custom_loss_testing=T[])
+		if custom_error == nothing
+			df = DataFrame(iteration=Int64[], error_training=T[], error_testing=T[])
+		else
+			df = DataFrame(iteration=Int64[], error_training=T[], error_testing=T[], custom_error_training=T[], custom_error_testing=T[])
 		end
 		# Perform the required number of iterations of learning.
-		gradient_reset(DN)
+		gradient_reset!(DN)
 		for iteration = 1:iterations
 			# Increment the gradient information based on the minibatch.
 			sample!(minibatch_domain, minibatch_ints, replace=minibatch_replace)
 			for minibatch_int in minibatch_ints
-				gradient_update(DN, X_training, Y_training, minibatch_int)
+				gradient_update!(DN, X_training, Y_training, minibatch_int)
 			end
 			# Update the parameters based on the gradient information.
-			parameters_update(DN, learning_rate_use, reset_gradient=true)
+			parameters_update!(DN, learning_rate_use, reset_gradient=true)
 			# Decide whether to record performance.
-			if report && (iteration % iterations_report == 0)
-				YH_training = forward(DN, X_training)
-				YH_testing = forward(DN, X_testing)
-				row = (iteration, error(DN, X_training, Y_training), error(DN, X_testing, Y_testing), custom_loss(YH_training, Y_training), custom_loss(YH_testing, Y_testing))
+			if (iteration % iterations_report) == 0
+				# Construct row to add to dataframe.
+				if custom_error == nothing
+					row = (iteration, error!(DN, X_training, Y_training), error!(DN, X_testing, Y_testing))
+				else
+					YH_training = forward!(DN, X_training)
+					YH_testing = forward!(DN, X_testing)
+					row = (iteration, error!(DN, X_training, Y_training), error!(DN, X_testing, Y_testing), custom_error(YH_training, Y_training), custom_error(YH_testing, Y_testing))
+				end
 				push!(df, row)
-				# if X_testing !== false
-				# 	row = (iteration, error(DN, X, Y), error(DN, X_testing, Y_testing))
-				# else
-				# 	row = (iteration, error(DN, X, Y))
-				# end
-				# push!(df, row)
 				println("Iteration $iteration. Error $(df[end, :error_training]).")
 			end
 		end
-		if report
-			println()
-		end
 	end
-	if report
-		return df
-	end
+	df
 end
