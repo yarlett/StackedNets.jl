@@ -1,39 +1,53 @@
-# DeepNets
+#DeepNets
 
 [![Build Status](https://travis-ci.org/yarlett/DeepNets.jl.svg?branch=master)](https://travis-ci.org/yarlett/DeepNets.jl)
 
-DeepNets aims to provide a simple interface to "deep" stacks of neural network units that can be trained with gradient descent of selected error measures.
+DeepNets provides a simple interface to "deep" stacks of neural network units that can be trained using gradient descent over defined error measures.
 
-DeepNets can consist of any number of Layers stacked on top of one another. Each layer can have a different number of output units that feed into the next layer above in the stack, and can have different activation functions.
+DeepNets can consist of any number of Layers stacked on top of one another. Each Layer can have a different number of output units that feed into the next layer above in the stack, and can have different activation functions.
 
-Currently supported activation functions include exponential, linear, rectified linear, sigmoidal, softmax, softplus, and tanh activations.
+Currently supported activation functions include exponential, linear, rectified linear, sigmoid, softmax, softplus, and tanh activations. DeepNets is able to compute non-diagonal Jacobian terms when it computes the differentials of unit activations with respect to unit inputs, and incorporates these values in its backpropagation algorithm, which means it can model activation functions where the activation of a unit depends on the input to units other than the unit in question.
 
 Currently supported error functions are squared error and cross entropy.
 
-Support for dropout of hidden activations during training will also be added in the future.
+DeepNets has been designed to make it relatively easy to write and add new activation and error functions to the source code. Over time it may become possible to pass in custom functions at the call-level.
 
-## Logistic Regression Example
+Support for dropout of visible/hidden activations during training will also be added in the future.
 
-```julia
-logistic_spec = [(5, ""), (1, "sigmoid")]
-logistic = DeepNet{Float64}(logistic_spec, "cross_entropy")
-```
+The main priority in DeepNets so far has been to develop a flexible and clean API to specify DeepNets, train them, and use them for prediction. While DeepNets is I hope at least somewhat performance, I am sure there are faster frameworks out there and there are undoubtedly many optimizations that would improve DeepNet's performance. I hope to work on these optimizations in the near future, once the API has solidified further.
 
-## Classifying MNIST Digits Example
+##Specifying DeepNets
 
-Let's say you want to construct a DeepNet consisting of 50 input units, connected to 100 sigmoidal units, connected to 50 tanh units, connected to 30 linear (output) units. And let's say you want to train the network using the cross entropy loss function. This can be accomplished with:
+DeepNets are constructed by first specifying a Units list. A Units list specifies the number of units in each layer of a DeepNet. For example, if we wanted to specify a model with 10 input units, feeding through to 3 output units with sigmoid activations, then we would define our Units list as follows
 
 ```julia
-spec = [(50, ""), (100, "sigmoid"), (50, "tanh"), (30, "linear")]
-DN = DeepNet{Float64}(spec, "cross_entropy")
+using DeepNets
+units = [Units(10), Units(3, activation="sigmoid")]
 ```
 
-Now let's say you want to compute the gradient of the error function with respect to every parameter in the net. That's also easy:
+Note that the first Units object in the list always corresponds to the input layer and defaults to having linear activations when no activation type is specified (it is typically desirable to have linear activations in the input layer).
+
+Alternatively, we can specify a more complicated network with in the following way
 
 ```julia
-X = randn(1000, 50) # Create 1000 input cases.
-Y = rand(1000, 30)  # Create 1000 output cases.
-gradient_update_batch(X, Y, DN)
+units = [Units(100), Units(100, activation="sigmoid"), Units(50, activation="rectified_linear"), Units(10, activation="softmax")]
 ```
 
-L.GB and L.GW within each Layer in the DeepNet stack will now contain the required gradient information for its corresponding parameter.
+##Constructing DeepNets
+
+Once you have a Units list, DeepNets are actually constructed as follows
+
+```julia
+deepnet = DeepNet{Float64}(units, error="cross_entropy")
+```
+
+The Float64 type specifies the type of inputs, parameters, and outputs used by the DeepNet, and must be a FloatingPoint type (Float32 would be the other primary use-case I would imagine). The error keyword specifies the error function used to compute output-target errors during training.
+
+##Training DeepNets
+
+Right now Deepnets can be trained using stochastic gradient descent, where minibatches can be randomly sampled from a training set (either with or without replacement).
+
+##Classifying MNIST Digits
+
+For a more fully worked out example, check [this](examples/mnist_classification.jl). This script specifies 2 models, a multinomial logistic classifier, and a more complex feedforward network with hidden units, and trains them to classify handwritten digits in the MNIST data.
+

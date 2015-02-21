@@ -44,11 +44,11 @@ end
 function backward!{T<:FloatingPoint}(L::Layer{T}, DELTAS::Matrix{T})
 	@inbounds begin
 		# Set DE_DNET.
+		jacobian = L.activation_jacobian
 		for o = 1:L.no
 			L.DE_DNET[o] = 0.0
 			for oo = 1:L.no
-				daoo_dnoo = L.activation_jacobian(o, oo, L.NET[:, 1], L.ACT[:, 1])
-				L.DE_DNET[o] += DELTAS[oo] * daoo_dnoo
+				L.DE_DNET[o] += DELTAS[oo, 1] * jacobian(o, oo, L.NET[:, 1], L.ACT[:, 1])
 			end
 		end
 		# Set DELTAS.

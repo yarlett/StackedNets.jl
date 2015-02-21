@@ -94,21 +94,21 @@ function softmax_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
 	@inbounds begin
 		for j = 1:size(NET, 2)
 			# Get maximum net value (for numerical stability).
-			maxnet = -Inf
+			maxnet::T = -Inf
 			for i = 1:size(NET, 1)
 				if NET[i, j] > maxnet
 					maxnet = NET[i, j]
 				end
 			end
 			# Get sum of exponentials.
-			expsum = 0.0
+			expsum::T = 0.0
 			for i = 1:size(NET, 1)
 				ACT[i, j] = exp(NET[i, j] - maxnet)
 				expsum += ACT[i, j]
 			end
 			# Set activations.
 			for i = 1:size(NET, 1)
-				ACT[i, j] /= expsum
+				ACT[i, j] ./= expsum
 			end
 		end
 	end
