@@ -14,7 +14,7 @@ DeepNets has been designed to make it relatively easy to write and add new activ
 
 Support for dropout of visible/hidden activations during training will also be added in the future.
 
-The main priority in DeepNets so far has been to develop a flexible and clean API to specify DeepNets, train them, and use them for prediction. While DeepNets is I hope at least somewhat performance, I am sure there are faster frameworks out there and there are undoubtedly many optimizations that would improve DeepNet's performance. I hope to work on these optimizations in the near future, once the API has solidified further.
+The main priority in DeepNets so far has been to develop a flexible and clean API to specify DeepNets, train them, and use them for prediction. While DeepNets is I hope at least somewhat performant, I am sure there are faster frameworks out there and there are undoubtedly many optimizations that could be implemented in order to improve DeepNet's performance. I hope to work on these optimizations in the near future, once the API has solidified further. For now, however, you can be reasonably confident that DeepNet's results are correct even if it doesn't produce them at the fastest rate.
 
 ##Specifying DeepNets
 
@@ -25,9 +25,9 @@ using DeepNets
 units = [Units(10), Units(3, activation="sigmoid")]
 ```
 
-Note that the first Units object in the list always corresponds to the input layer and defaults to having linear activations when no activation type is specified (it is typically desirable to have linear activations in the input layer).
+Note that the first Units object in the list always corresponds to the input layer and defaults to having linear activations when no activation type is specified (it is typically desirable to have linear activations in the input layer of a network).
 
-Alternatively, we can specify a more complicated network with in the following way
+Alternatively, we can specify a more complicated network in the following way
 
 ```julia
 units = [Units(100), Units(100, activation="sigmoid"), Units(50, activation="rectified_linear"), Units(10, activation="softmax")]
@@ -35,13 +35,13 @@ units = [Units(100), Units(100, activation="sigmoid"), Units(50, activation="rec
 
 ##Constructing DeepNets
 
-Once you have a Units list, DeepNets are actually constructed as follows
+DeepNets themselves are constructed from Units lists as follows
 
 ```julia
 deepnet = DeepNet{Float64}(units, error="cross_entropy")
 ```
 
-The Float64 type specifies the type of inputs, parameters, and outputs used by the DeepNet, and must be a FloatingPoint type (Float32 would be the other primary use-case I would imagine). The error keyword specifies the error function used to compute output-target errors during training.
+The Float64 type specifies the type of the inputs, parameters, and outputs used by the DeepNet, and must be a sub-class of Julia's FloatingPoint type (Float32 would be the other primary use-case I would imagine, but you never know). The error keyword specifies the error function used to compute output-target errors during training.
 
 ##Training DeepNets
 
@@ -49,5 +49,4 @@ Right now Deepnets can be trained using stochastic gradient descent, where minib
 
 ##Classifying MNIST Digits
 
-For a more fully worked out example, check [this](examples/mnist_classification.jl). This script specifies 2 models, a multinomial logistic classifier, and a more complex feedforward network with hidden units, and trains them to classify handwritten digits in the MNIST data.
-
+For a more fully worked out example, check out [this one](examples/mnist_classification.jl). This script specifies 2 models -- a multinomial logistic classifier, and a more complex feedforward network with hidden units -- and trains them to classify handwritten digits into the 10 digit classes in the MNIST data set.
