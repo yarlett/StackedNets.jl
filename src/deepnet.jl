@@ -1,17 +1,17 @@
 using DataFrames
 using StatsBase
 
-immutable DeepNet{T<:FloatingPoint}
+immutable StackedNet{T<:FloatingPoint}
 	layers::Vector{Layer{T}}
 	error::ASCIIString
 	error_function!::Function
 
-	function DeepNet(units::Vector{Units}; error::ASCIIString="squared_error", scale::T=1e-3)
+	function StackedNet(units::Vector{Units}; error::ASCIIString="squared_error", scale::T=1e-3)
 		if length(units) < 2
-			return error("DeepNet units specification is too short.")
+			return error("StackedNet units specification is too short.")
 		end
 		if minimum([unit.n for unit in units]) <= 0
-			return error("Invalid number of units in DeepNet units specification.")
+			return error("Invalid number of units in StackedNet units specification.")
 		end
 		# Iterate over sequential paits of units and construct the required layers.
 		layers = Array(Layer{T}, length(units)-1)
@@ -27,7 +27,7 @@ immutable DeepNet{T<:FloatingPoint}
 end
 
 # Returns the patternwise error on a specific pattern.
-function error!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}, p::Int)
+function error!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T}, p::Int)
 	forward!(DN, X, p)
 	L = DN.layers[end]
 	DN.error_function!(L.ACT, Y[:, p:p], L.E, L.DE_DYH)
@@ -35,7 +35,7 @@ function error!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}, p:
 end
 
 # Returns the patternwise error on a set of patterns.
-function error!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})
+function error!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T})
 	@inbounds begin
 		E::T = 0.0
 		for p = 1:size(X, 2)
@@ -46,8 +46,8 @@ function error!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})
 	E
 end
 
-# Forward propagate a pattern through a DeepNet.
-function forward!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, p::Int)
+# Forward propagate a pattern through a StackedNet.
+function forward!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, p::Int)
 	@inbounds begin
 		forward!(DN.layers[1], X, p)
 		for l = 2:length(DN.layers)
@@ -56,8 +56,8 @@ function forward!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, p::Int)
 	end
 end
 
-# Returns output activations in a DeepNet for a set of input patterns.
-function forward!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T})
+# Returns output activations in a StackedNet for a set of input patterns.
+function forward!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T})
 	@inbounds begin
 		no = DN.layers[end].no
 		np = size(X, 2)
@@ -72,8 +72,8 @@ function forward!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T})
 	Y
 end
 
-# Numerically checks the analytic gradient of a DeepNet and returns a data frame of results.
-function gradient_check{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}; step=1e-8, tolerance=1e-5)
+# Numerically checks the analytic gradient of a StackedNet and returns a data frame of results.
+function gradient_check{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T}; step=1e-8, tolerance=1e-5)
 	# Initialize data frame.
 	df = DataFrame(layer=Int64[], parameter=Int64[], analytic_grad=T[], numerical_grad=T[], absolute_error=T[], ok=Bool[])
 	# Iterate over layers, and parameters within each layer.
@@ -103,7 +103,7 @@ function gradient_check{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matri
 end
 
 # Finds the maximum absolute gradient value.
-function gradient_maxabs{T<:FloatingPoint}(DN::DeepNet{T})
+function gradient_maxabs{T<:FloatingPoint}(DN::StackedNet{T})
 	@inbounds begin
 		gmax::T = -Inf
 		for l = 1:length(DN.layers)
@@ -118,8 +118,8 @@ function gradient_maxabs{T<:FloatingPoint}(DN::DeepNet{T})
 	gmax
 end
 
-# Zeros out all the gradient information in a DeepNet.
-function gradient_reset!{T<:FloatingPoint}(DN::DeepNet{T})
+# Zeros out all the gradient information in a StackedNet.
+function gradient_reset!{T<:FloatingPoint}(DN::StackedNet{T})
 	@inbounds begin
 		for l = 1:length(DN.layers)
 			L = DN.layers[l]
@@ -134,7 +134,7 @@ function gradient_reset!{T<:FloatingPoint}(DN::DeepNet{T})
 end
 
 # Increment the gradient information (GW and GB) on each layer based on a single input-output pattern.
-function gradient_update!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T}, p::Int)
+function gradient_update!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T}, p::Int)
 	@inbounds begin
 		# Forward propagate the input pattern through the network.
 		forward!(DN, X, p)
@@ -171,7 +171,7 @@ function gradient_update!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Mat
 end
 
 # Increment the gradient information (GW and GB) on each layer based on a set of input-output pairs.
-function gradient_update!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Matrix{T})
+function gradient_update!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T})
 	@inbounds begin
 		for p = 1:size(X, 2)
 			gradient_update!(DN, X, Y, p)
@@ -179,8 +179,8 @@ function gradient_update!{T<:FloatingPoint}(DN::DeepNet{T}, X::Matrix{T}, Y::Mat
 	end
 end
 
-# Update the parameters of a DeepNet based on the accumulated gradient information.
-function parameters_update!{T<:FloatingPoint}(DN::DeepNet{T}, lr::T; reset_gradient=true)
+# Update the parameters of a StackedNet based on the accumulated gradient information.
+function parameters_update!{T<:FloatingPoint}(DN::StackedNet{T}, lr::T; reset_gradient=true)
 	@inbounds begin
 		for l = 1:length(DN.layers)
 			L = DN.layers[l]
@@ -196,7 +196,7 @@ function parameters_update!{T<:FloatingPoint}(DN::DeepNet{T}, lr::T; reset_gradi
 	end
 end
 
-function train_sgd!{T<:FloatingPoint}(DN::DeepNet{T}, X_training::Matrix{T}, Y_training::Matrix{T}; X_testing=false, Y_testing=false, custom_error::Function=nothing, iterations::Int=1000, iterations_report::Int=100, learning_rate::T=1e-2, minibatch_size::Int=100, minibatch_replace::Bool=true, report::Bool=true)
+function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, Y_training::Matrix{T}; X_testing=false, Y_testing=false, custom_error::Function=nothing, iterations::Int=1000, iterations_report::Int=100, learning_rate::T=1e-2, minibatch_size::Int=100, minibatch_replace::Bool=true, report::Bool=true)
 	@inbounds begin
 		num_patterns::Int64 = size(X_training, 2)
 		# Minibatch size cannot be larger than number of patterns when sampling without replacement.

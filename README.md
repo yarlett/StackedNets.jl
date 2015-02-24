@@ -1,27 +1,27 @@
-#DeepNets
+#StackedNets
 
-[![Build Status](https://travis-ci.org/yarlett/DeepNets.jl.svg?branch=master)](https://travis-ci.org/yarlett/DeepNets.jl)
+[![Build Status](https://travis-ci.org/yarlett/StackedNets.jl.svg?branch=master)](https://travis-ci.org/yarlett/StackedNets.jl)
 
-DeepNets provides a simple interface to "deep" stacks of neural network units that can be trained using gradient descent over defined error measures.
+StackedNets provides a simple interface to "deep" stacks of neural network units that can be trained using gradient descent over defined error measures.
 
-DeepNets can consist of any number of Layers stacked on top of one another. Each Layer can have a different number of output units that feed into the next layer above in the stack, and can have different activation functions.
+StackedNets can consist of any number of Layers stacked on top of one another. Each Layer can have a different number of output units that feed into the next layer above in the stack, and can have different activation functions.
 
-Currently supported activation functions include exponential, linear, rectified linear, sigmoid, softmax, softplus, and tanh activations. DeepNets is able to compute non-diagonal Jacobian terms when it computes the differentials of unit activations with respect to unit inputs, and incorporates these values in its backpropagation algorithm, which means it can model activation functions where the activation of a unit depends on the input to units other than the unit in question.
+Currently supported activation functions include exponential, linear, rectified linear, sigmoid, softmax, softplus, and tanh activations. StackedNets is able to compute non-diagonal Jacobian terms when it computes the differentials of unit activations with respect to unit inputs, and incorporates these values in its backpropagation algorithm, which means it can model activation functions where the activation of a unit depends on the input to units other than the unit in question.
 
 Currently supported error functions are squared error and cross entropy.
 
-DeepNets has been designed to make it relatively easy to write and add new activation and error functions to the source code. Over time it may become possible to pass in custom functions at the call-level.
+StackedNets has been designed to make it relatively easy to write and add new activation and error functions to the source code. Over time it may become possible to pass in custom functions at the call-level.
 
 Support for dropout of visible/hidden activations during training will also be added in the future.
 
-The main priority in DeepNets so far has been to develop a flexible and clean API to specify DeepNets, train them, and use them for prediction. While DeepNets is I hope at least somewhat performant, I am sure there are faster frameworks out there and there are undoubtedly many optimizations that could be implemented in order to improve DeepNet's performance. I hope to work on these optimizations in the near future, once the API has solidified further. For now, however, you can be reasonably confident that DeepNet's results are correct even if it doesn't produce them at the fastest rate.
+The main priority in StackedNets so far has been to develop a flexible and clean API to specify StackedNets, train them, and use them for prediction. While StackedNets is I hope at least somewhat performant, I am sure there are faster frameworks out there and there are undoubtedly many optimizations that could be implemented in order to improve StackedNet's performance. I hope to work on these optimizations in the near future, once the API has solidified further. For now, however, you can be reasonably confident that StackedNet's results are correct even if it doesn't produce them at the fastest rate.
 
-##Specifying DeepNets
+##Specifying StackedNets
 
-DeepNets are constructed by first specifying a Units list. A Units list specifies the number of units in each layer of a DeepNet. For example, if we wanted to specify a model with 10 input units, feeding through to 3 output units with sigmoid activations, then we would define our Units list as follows
+StackedNets are constructed by first specifying a Units list. A Units list specifies the number of units in each layer of a StackedNet. For example, if we wanted to specify a model with 10 input units, feeding through to 3 output units with sigmoid activations, then we would define our Units list as follows
 
 ```julia
-using DeepNets
+using StackedNets
 units = [Units(10), Units(3, activation="sigmoid")]
 ```
 
@@ -33,17 +33,17 @@ Alternatively, we can specify a more complicated network in the following way
 units = [Units(100), Units(100, activation="sigmoid"), Units(50, activation="rectified_linear"), Units(10, activation="softmax")]
 ```
 
-##Constructing DeepNets
+##Constructing StackedNets
 
-DeepNets themselves are constructed from Units lists as follows
+StackedNets themselves are constructed from Units lists as follows
 
 ```julia
-deepnet = DeepNet{Float64}(units, error="cross_entropy")
+deepnet = StackedNet{Float64}(units, error="cross_entropy")
 ```
 
-The Float64 type specifies the type of the inputs, parameters, and outputs used by the DeepNet, and must be a sub-class of Julia's FloatingPoint type (Float32 would be the other primary use-case I would imagine, but you never know). The error keyword specifies the error function used to compute output-target errors during training.
+The Float64 type specifies the type of the inputs, parameters, and outputs used by the StackedNet, and must be a sub-class of Julia's FloatingPoint type (Float32 would be the other primary use-case I would imagine, but you never know). The error keyword specifies the error function used to compute output-target errors during training.
 
-##Training DeepNets
+##Training StackedNets
 
 Right now Deepnets can be trained using stochastic gradient descent, where minibatches can be randomly sampled from a training set (either with or without replacement).
 

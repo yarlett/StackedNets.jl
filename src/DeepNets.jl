@@ -1,11 +1,11 @@
-module DeepNets
+module StackedNets
 
 	export error!,
 	forward!,
 	gradient_check,
 	gradient_update!,
 	train_sgd!,
-	DeepNet,
+	StackedNet,
 	Units
 
 	include("activation_functions.jl")

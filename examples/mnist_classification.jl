@@ -1,7 +1,7 @@
-using DeepNets
+using StackedNets
 using MNIST
 
-# Uses DeepNets to train a logistic regression model, and a feedforward network with  to classify MNIST handwritten digits.
+# Uses StackedNets to train a logistic regression model, and a feedforward network with  to classify MNIST handwritten digits.
 
 function digits_to_indicators(digits)
 	digit_indicators = zeros(Float64, (10, length(digits)))
@@ -36,13 +36,13 @@ println("Training data: X has size $(size(XTR)); Y has size $(size(YTR)).")
 println("Testing  data: X has size $(size(XTE)); Y has size $(size(YTE)).")
 println()
 
-# Define multinomial logistic classifier model in DeepNets.
+# Define multinomial logistic classifier model in StackedNets.
 units1 = [Units(size(XTR, 1)), Units(10, activation="softmax")]
-deepnet1 = DeepNet{Float64}(units1, error="cross_entropy")
+deepnet1 = StackedNet{Float64}(units1, error="cross_entropy")
 
-# Define feedforward neural network model with rectified linear units in DeepNets.
+# Define feedforward neural network model with rectified linear units in StackedNets.
 units2 = [Units(size(XTR, 1)), Units(25, activation="rectified_linear"),  Units(10, activation="softmax")]
-deepnet2 = DeepNet{Float64}(units2, error="cross_entropy")
+deepnet2 = StackedNet{Float64}(units2, error="cross_entropy")
 
 # Train the 2 models.
 for (label, deepnet) in (("Multinomial Logistic", deepnet1), ("784-100-10 Rectified Linear", deepnet2))

@@ -1,4 +1,4 @@
-using DeepNets
+using StackedNets
 using Base.Test
 
 # Function to numerically check the analytic error gradients.
@@ -8,7 +8,7 @@ function test_deepnet_gradient(; cases::Int=1)
 			println("Testing $activation units with $error errors.")
 			# Construct a random deep network based on the activation and error types.
 			units = _generate_random_unit_list(activation, error)
-			DN = DeepNet{Float64}(units, error=error, scale=1e-1)
+			DN = StackedNet{Float64}(units, error=error, scale=1e-1)
 			# Construct input / output cases.
 			X = rand(units[1].n, cases)
 			Y = rand(units[end].n, cases)
