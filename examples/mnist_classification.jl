@@ -45,7 +45,7 @@ units2 = [Units(size(XTR, 1)), Units(25, activation="rectified_linear"),  Units(
 stackednet2 = StackedNet{Float64}(units2, error="cross_entropy")
 
 # Train the 2 models.
-for (label, stackednet) in (("Multinomial Logistic", stackednet1), ("784-100-10 Rectified Linear", stackednet2))
+for (label, stackednet) in (("Multinomial Logistic", stackednet1), ("784-25-10 Rectified Linear", stackednet2))
 	# Report initial training error.
 	println("Intial training error of $label model is $(error!(stackednet, XTR, YTR)).")
 	println()
