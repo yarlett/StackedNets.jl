@@ -38,21 +38,21 @@ println()
 
 # Define multinomial logistic classifier model in StackedNets.
 units1 = [Units(size(XTR, 1)), Units(10, activation="softmax")]
-deepnet1 = StackedNet{Float64}(units1, error="cross_entropy")
+stackednet1 = StackedNet{Float64}(units1, error="cross_entropy")
 
 # Define feedforward neural network model with rectified linear units in StackedNets.
 units2 = [Units(size(XTR, 1)), Units(25, activation="rectified_linear"),  Units(10, activation="softmax")]
-deepnet2 = StackedNet{Float64}(units2, error="cross_entropy")
+stackednet2 = StackedNet{Float64}(units2, error="cross_entropy")
 
 # Train the 2 models.
-for (label, deepnet) in (("Multinomial Logistic", deepnet1), ("784-100-10 Rectified Linear", deepnet2))
+for (label, stackednet) in (("Multinomial Logistic", stackednet1), ("784-100-10 Rectified Linear", stackednet2))
 	# Report initial training error.
-	println("Intial training error of $label model is $(error!(deepnet2, XTR, YTR)).")
+	println("Intial training error of $label model is $(error!(stackednet, XTR, YTR)).")
 	println()
 
 	# Perform stochastic gradient descent on the deep net (training results returned as a DataFrame).
 	@time df = train_sgd!(
-		deepnet,
+		stackednet,
 		XTR,
 		YTR,
 		X_testing=XTE,
@@ -68,9 +68,9 @@ for (label, deepnet) in (("Multinomial Logistic", deepnet1), ("784-100-10 Rectif
 	println()
 
 	# Report final error.
-	YH = forward!(deepnet, XTR)
+	YH = forward!(stackednet, XTR)
 	tr_error = error_percent(YH, YTR)
-	YH = forward!(deepnet, XTE)
+	YH = forward!(stackednet, XTE)
 	te_error = error_percent(YH, YTE)
 	println("Final test classification error for $label model on MNIST is: training $(tr_error)%; testing $(te_error)%.")
 	println()

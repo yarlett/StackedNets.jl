@@ -38,14 +38,14 @@ units = [Units(100), Units(100, activation="sigmoid"), Units(50, activation="rec
 StackedNets themselves are constructed from Units lists as follows
 
 ```julia
-deepnet = StackedNet{Float64}(units, error="cross_entropy")
+stackednet = StackedNet{Float64}(units, error="cross_entropy")
 ```
 
 The Float64 type specifies the type of the inputs, parameters, and outputs used by the StackedNet, and must be a sub-class of Julia's FloatingPoint type (Float32 would be the other primary use-case I would imagine, but you never know). The error keyword specifies the error function used to compute output-target errors during training.
 
 ##Training StackedNets
 
-Right now Deepnets can be trained using stochastic gradient descent, where minibatches can be randomly sampled from a training set (either with or without replacement).
+Right now StackedNets can be trained using stochastic gradient descent, where minibatches can be randomly sampled from a training set (either with or without replacement).
 
 ##Classifying MNIST Digits
 
