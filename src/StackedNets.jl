@@ -10,7 +10,7 @@ module StackedNets
 
 	include("activation_functions.jl")
 	include("layer.jl")
-	include("deepnet.jl")
+	include("stackednet.jl")
 	include("error_functions.jl")
 	include("units.jl")
 	include("utils.jl")
