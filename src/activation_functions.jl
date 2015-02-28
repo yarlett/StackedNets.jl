@@ -3,32 +3,30 @@
 function activation_function_selector(activation::ASCIIString)
 	# To be implemented: exponential, leaky_rectified_linear, rectified_linear, softplus, tanh
 	if activation == "exponential"
-		return activation, exponential_activation!, exponential_jacobian
+		return activation, exponential_activation!, exponential_jacobian, false
 	elseif activation == "rectified_linear"
-		return activation, rectified_linear_activation!, rectified_linear_jacobian
+		return activation, rectified_linear_activation!, rectified_linear_jacobian, false
 	elseif activation == "sigmoid"
-		return activation, sigmoid_activation!, sigmoid_jacobian
+		return activation, sigmoid_activation!, sigmoid_jacobian, false
 	elseif activation == "softmax"
-		return activation, softmax_activation!, softmax_jacobian
+		return activation, softmax_activation!, softmax_jacobian, true
 	elseif activation == "softplus"
-		return activation, softplus_activation!, softplus_jacobian
+		return activation, softplus_activation!, softplus_jacobian, false
 	elseif activation == "tanh"
-		return activation, tanh_activation!, tanh_jacobian
+		return activation, tanh_activation!, tanh_jacobian, false
 	# Else default to linear activations.
 	else
-		return "linear", linear_activation!, linear_jacobian
+		return "linear", linear_activation!, linear_jacobian, false
 	end
 end
 
 ### Exponential activations.
 
-function exponential_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
+function exponential_activation!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T})
 	@inbounds begin
-		for j = 1:size(NET, 2)
-			for i = 1:size(NET, 1)
-				ACT[i, j] = exp(NET[i, j])
-			end
-		end	
+		for i = 1:length(NET)
+			ACT[i] = exp(NET[i])
+		end
 	end
 end
 
@@ -38,13 +36,11 @@ end
 
 ### Linear activations.
 
-function linear_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
+function linear_activation!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T})
 	@inbounds begin
-		for j = 1:size(NET, 2)
-			for i = 1:size(NET, 1)
-				ACT[i, j] = NET[i, j]
-			end
-		end	
+		for i = 1:length(NET)
+			ACT[i] = NET[i]
+		end
 	end
 end
 
@@ -54,17 +50,15 @@ end
 
 ### Rectified linear activations.
 
-function rectified_linear_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
+function rectified_linear_activation!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T})
 	@inbounds begin
-		for j = 1:size(NET, 2)
-			for i = 1:size(NET, 1)
-				if NET[i, j] > 0.0
-					ACT[i, j] = NET[i, j]
-				else
-					ACT[i, j] = 0.0
-				end
+		for i = 1:length(NET)
+			if NET[i] > 0.0
+				ACT[i] = NET[i]
+			else
+				ACT[i] = 0.0
 			end
-		end	
+		end
 	end
 end
 
@@ -74,13 +68,11 @@ end
 
 ### Sigmoid activations.
 
-function sigmoid_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
+function sigmoid_activation!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T})
 	@inbounds begin
-		for j = 1:size(NET, 2)
-			for i = 1:size(NET, 1)
-				ACT[i, j] = 1.0 / (1.0 + exp(-NET[i, j]))
-			end
-		end	
+		for i = 1:length(NET)
+			ACT[i] = 1.0 / (1.0 + exp(-NET[i]))
+		end
 	end
 end
 
@@ -90,25 +82,25 @@ end
 
 ### Softmax activations.
 
-function softmax_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
+function softmax_activation!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T})
 	@inbounds begin
 		for j = 1:size(NET, 2)
 			# Get maximum net value (for numerical stability).
 			maxnet::T = -Inf
-			for i = 1:size(NET, 1)
-				if NET[i, j] > maxnet
-					maxnet = NET[i, j]
+			for i = 1:length(NET)
+				if NET[i] > maxnet
+					maxnet = NET[i]
 				end
 			end
 			# Get sum of exponentials.
 			expsum::T = 0.0
-			for i = 1:size(NET, 1)
-				ACT[i, j] = exp(NET[i, j] - maxnet)
-				expsum += ACT[i, j]
+			for i = 1:length(NET)
+				ACT[i] = exp(NET[i] - maxnet)
+				expsum += ACT[i]
 			end
 			# Set activations.
-			for i = 1:size(NET, 1)
-				ACT[i, j] ./= expsum
+			for i = 1:length(NET)
+				ACT[i] ./= expsum
 			end
 		end
 	end
@@ -124,13 +116,11 @@ end
 
 ### Softplus activations.
 
-function softplus_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
+function softplus_activation!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T})
 	@inbounds begin
-		for j = 1:size(NET, 2)
-			for i = 1:size(NET, 1)
-				ACT[i, j] = log(1.0 + exp(NET[i, j]))
-			end
-		end	
+		for i = 1:length(NET)
+			ACT[i] = log(1.0 + exp(NET[i]))
+		end
 	end
 end
 
@@ -145,13 +135,11 @@ end
 
 ### Tanh activations.
 
-function tanh_activation!{T<:FloatingPoint}(NET::Matrix{T}, ACT::Matrix{T})
+function tanh_activation!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T})
 	@inbounds begin
-		for j = 1:size(NET, 2)
-			for i = 1:size(NET, 1)
-				ACT[i, j] = tanh(NET[i, j])
-			end
-		end	
+		for i = 1:length(NET)
+			ACT[i] = tanh(NET[i])
+		end
 	end
 end
 

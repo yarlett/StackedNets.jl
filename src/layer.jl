@@ -4,18 +4,19 @@ immutable Layer{T<:FloatingPoint}
 	ni::Int
 	no::Int
 	W::Matrix{T}
-	B::Matrix{T}
+	B::Vector{T}
 	GW::Matrix{T}
-	GB::Matrix{T}
-	NET::Matrix{T}
-	ACT::Matrix{T}
-	DE_DNET::Matrix{T}
-	E::Matrix{T}
-	DE_DYH::Matrix{T}
-	DELTAS::Matrix{T}
+	GB::Vector{T}
+	NET::Vector{T}
+	ACT::Vector{T}
+	DE_DNET::Vector{T}
+	E::Vector{T}
+	DE_DYH::Vector{T}
+	DELTAS::Vector{T}
 	activation::ASCIIString
 	activation_function!::Function
 	activation_jacobian::Function
+	activation_full_jacobian::Bool
 
 	function Layer(ni::Int, no::Int, activation::ASCIIString; scale::T=1e-3)
 		if ni > 0 && no > 0
@@ -24,16 +25,16 @@ immutable Layer{T<:FloatingPoint}
 			# Initialize storage for gradient information.
 			GW, GB = zeros(W), zeros(B)
 			# Initialize storage for upper level units.
-			NET = zeros(T, (no, 1))
-			ACT = zeros(T, (no, 1))
-			DE_DNET = zeros(T, (no, 1))
-			E = zeros(T, (no, 1))
-			DE_DYH = zeros(T, (no, 1))
-			DELTAS = zeros(T, (ni, 1))
+			NET = zeros(T, no)
+			ACT = zeros(T, no)
+			DE_DNET = zeros(T, no)
+			E = zeros(T, no)
+			DE_DYH = zeros(T, no)
+			DELTAS = zeros(T, ni)
 			# Set activation function for layer.
-			activation, activation_function!, activation_jacobian = activation_function_selector(activation)
+			activation, activation_function!, activation_jacobian, activation_full_jacobian = activation_function_selector(activation)
 			# Create and return the object.
-			new(ni, no, W, B, GW, GB, NET, ACT, DE_DNET, E, DE_DYH, DELTAS, activation, activation_function!, activation_jacobian)
+			new(ni, no, W, B, GW, GB, NET, ACT, DE_DNET, E, DE_DYH, DELTAS, activation, activation_function!, activation_jacobian, activation_full_jacobian)
 		else
 			error("Invalid number of units used to initialize Layer object (ni=$ni; no=$no) to create Layer object.")
 		end
@@ -41,17 +42,22 @@ immutable Layer{T<:FloatingPoint}
 end
 
 # Propagate delta quantities coming from the layer above downward through the layer.
-function backward!{T<:FloatingPoint}(L::Layer{T}, DELTAS::Matrix{T})
+function backward!{T<:FloatingPoint}(L::Layer{T}, DELTAS::Vector{T})
 	@inbounds begin
-		# Set DE_DNET.
-		jacobian = L.activation_jacobian
-		for o = 1:L.no
-			L.DE_DNET[o] = 0.0
-			for oo = 1:L.no
-				L.DE_DNET[o] += DELTAS[oo, 1] * jacobian(o, oo, L.NET[:, 1], L.ACT[:, 1])
+		# Set DE_DNET on the layer.
+		if L.activation_full_jacobian
+			for o = 1:L.no
+				L.DE_DNET[o] = 0.0
+				for oo = 1:L.no
+					L.DE_DNET[o] += DELTAS[oo] * L.activation_jacobian(o, oo, L.NET, L.ACT)
+				end
+			end
+		else
+			for o = 1:L.no
+				L.DE_DNET[o] = DELTAS[o] * L.activation_jacobian(o, o, L.NET, L.ACT)
 			end
 		end
-		# Set DELTAS.
+		# Set DELTAS on the layer.
 		for i = 1:L.ni
 			L.DELTAS[i] = 0.0
 			for o = 1:L.no
@@ -61,7 +67,22 @@ function backward!{T<:FloatingPoint}(L::Layer{T}, DELTAS::Matrix{T})
 	end
 end
 
-# Propagate an incoming pattern forward through a layer.
+# Propagate an incoming pattern forward through a layer (vector input).
+function forward!{T<:FloatingPoint}(L::Layer{T}, IN::Vector{T})
+	@inbounds begin
+		# Calculate net values.
+		for o = 1:L.no
+			L.NET[o] = L.B[o]
+			for i = 1:L.ni
+				L.NET[o] += IN[i] * L.W[i, o]
+			end
+		end
+		# Set activations and gradient information related to activations.
+		L.activation_function!(L.NET, L.ACT)
+	end
+end
+
+# Propagate an incoming pattern forward through a layer (matrix input plus pattern index).
 function forward!{T<:FloatingPoint}(L::Layer{T}, IN::Matrix{T}, p::Int)
 	@inbounds begin
 		# Calculate net values.

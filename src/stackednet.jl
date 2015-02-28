@@ -30,7 +30,7 @@ end
 function error!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T}, p::Int)
 	forward!(DN, X, p)
 	L = DN.layers[end]
-	DN.error_function!(L.ACT, Y[:, p:p], L.E, L.DE_DYH)
+	DN.error_function!(L.ACT, Y[:, p], L.E, L.DE_DYH)
 	sum(L.E)
 end
 
@@ -51,7 +51,7 @@ function forward!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, p::Int)
 	@inbounds begin
 		forward!(DN.layers[1], X, p)
 		for l = 2:length(DN.layers)
-			forward!(DN.layers[l], DN.layers[l - 1].ACT, 1)
+			forward!(DN.layers[l], DN.layers[l - 1].ACT)
 		end
 	end
 end
@@ -64,9 +64,7 @@ function forward!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T})
 		Y = zeros(T, (no, np))
 		for p = 1:np
 			forward!(DN, X, p)
-			for i = 1:no
-				Y[i, p] = DN.layers[end].ACT[i, 1]
-			end
+			Y[:, p] = DN.layers[end].ACT
 		end
 	end
 	Y
@@ -138,18 +136,21 @@ function gradient_update!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::
 	@inbounds begin
 		# Forward propagate the input pattern through the network.
 		forward!(DN, X, p)
-		# Backpropagate the deltas for each unit in the network.
-		for l = length(DN.layers):-1:1
+		# Walk backward through the stacked network.
+		nl = length(DN.layers)
+		for l = nl:-1:1
+			# Set references to layers.
+			Lup = l == nl ? nothing : DN.layers[l + 1]
 			L = DN.layers[l]
-			# Propagate deltas backward.
-			if l == length(DN.layers)
-				DN.error_function!(L.ACT, Y[:, p:p], L.E, L.DE_DYH)
+			Ldn = l == 1 ? nothing : DN.layers[l - 1]
+			# Backpropagation.
+			if l == nl
+				DN.error_function!(L.ACT, Y[:, p], L.E, L.DE_DYH)
 				backward!(L, L.DE_DYH)
 			else
-				Lup = DN.layers[l + 1]
 				backward!(L, Lup.DELTAS)
 			end
-			# Increment the gradient information for the layer's parameters.
+			# Increment gradient information.
 			if l == 1
 				for o = 1:L.no
 					for i = 1:L.ni
@@ -158,10 +159,9 @@ function gradient_update!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::
 					L.GB[o] += L.DE_DNET[o]
 				end
 			else
-				Ldn = DN.layers[l - 1]
 				for o = 1:L.no
 					for i = 1:L.ni
-						L.GW[i, o] += Ldn.ACT[i, 1] * L.DE_DNET[o]
+						L.GW[i, o] += Ldn.ACT[i] * L.DE_DNET[o]
 					end
 					L.GB[o] += L.DE_DNET[o]
 				end
@@ -180,16 +180,20 @@ function gradient_update!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::
 end
 
 # Update the parameters of a StackedNet based on the accumulated gradient information.
-function parameters_update!{T<:FloatingPoint}(DN::StackedNet{T}, lr::T; reset_gradient=true)
+function parameters_update!{T<:FloatingPoint}(DN::StackedNet{T}, lr::T; reset_gradient::Bool=true)
 	@inbounds begin
 		for l = 1:length(DN.layers)
 			L = DN.layers[l]
-			for (M, GM) in ((L.W, L.GW), (L.B, L.GB))
-				for i = 1:length(M)
-					M[i] -= lr * GM[i]
-					if reset_gradient
-						GM[i] = 0.0
-					end
+			for i = 1:length(L.W)
+				L.W[i] -= lr * L.GW[i]
+				if reset_gradient
+					L.GW[i] = 0.0
+				end
+			end
+			for i = 1:length(L.B)
+				L.B[i] -= lr * L.GB[i]
+				if reset_gradient
+					L.GB[i] = 0.0
 				end
 			end
 		end

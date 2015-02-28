@@ -59,7 +59,7 @@ for (label, stackednet) in (("Multinomial Logistic", stackednet1), ("784-25-10 R
 		Y_testing=YTE,
 		custom_error=error_percent,
 		iterations=100000,
-		iterations_report=1000,
+		iterations_report=10000,
 		learning_rate=1e-2,
 		minibatch_size=100,
 		minibatch_replace=true,

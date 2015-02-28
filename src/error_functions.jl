@@ -8,7 +8,7 @@ function error_function_selector(error::ASCIIString)
 	end
 end
 
-function cross_entropy!{T<:FloatingPoint}(YH::Matrix{T}, Y::Matrix{T}, E::Matrix{T}, DE_DYH::Matrix{T}; eta::T=1e-10)
+function cross_entropy!{T<:FloatingPoint}(YH::Vector{T}, Y::Vector{T}, E::Vector{T}, DE_DYH::Vector{T}; eta::T=1e-10)
 	@inbounds begin
 		for i = 1:length(Y)
 			E[i] = -((Y[i] * log(YH[i] + eta)) + ((1.0 - Y[i]) * log(1.0 - YH[i] + eta)))
@@ -17,7 +17,7 @@ function cross_entropy!{T<:FloatingPoint}(YH::Matrix{T}, Y::Matrix{T}, E::Matrix
 	end
 end
 
-function squared_error!{T<:FloatingPoint}(YH::Matrix{T}, Y::Matrix{T}, E::Matrix{T}, DE_DYH::Matrix{T})
+function squared_error!{T<:FloatingPoint}(YH::Vector{T}, Y::Vector{T}, E::Vector{T}, DE_DYH::Vector{T})
 	@inbounds begin
 		for i = 1:length(Y)
 			E[i] = 0.5 * abs2(YH[i] - Y[i])
