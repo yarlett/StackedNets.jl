@@ -1,3 +1,5 @@
+using Base.BLAS
+
 include("units.jl")
 
 immutable Layer{T<:FloatingPoint}
@@ -58,12 +60,8 @@ function backward!{T<:FloatingPoint}(L::Layer{T}, DELTAS::Vector{T})
 			end
 		end
 		# Set DELTAS on the layer.
-		for i = 1:L.ni
-			L.DELTAS[i] = 0.0
-			for o = 1:L.no
-				L.DELTAS[i] += L.DE_DNET[o] * L.W[i, o]
-			end
-		end
+		L.DELTAS[:] = 0.0
+		gemv!('N', 1.0, L.W, L.DE_DNET, 1.0, L.DELTAS)
 	end
 end
 
@@ -71,12 +69,8 @@ end
 function forward!{T<:FloatingPoint}(L::Layer{T}, IN::Vector{T})
 	@inbounds begin
 		# Calculate net values.
-		for o = 1:L.no
-			L.NET[o] = L.B[o]
-			for i = 1:L.ni
-				L.NET[o] += IN[i] * L.W[i, o]
-			end
-		end
+		blascopy!(L.no, L.B, 1, L.NET, 1)
+		gemv!('T', 1.0, L.W, IN, 1.0, L.NET)
 		# Set activations and gradient information related to activations.
 		L.activation_function!(L.NET, L.ACT)
 	end
@@ -86,12 +80,8 @@ end
 function forward!{T<:FloatingPoint}(L::Layer{T}, IN::Matrix{T}, p::Int)
 	@inbounds begin
 		# Calculate net values.
-		for o = 1:L.no
-			L.NET[o] = L.B[o]
-			for i = 1:L.ni
-				L.NET[o] += IN[i, p] * L.W[i, o]
-			end
-		end
+		blascopy!(L.no, L.B, 1, L.NET, 1)
+		gemv!('T', 1.0, L.W, IN[:, p], 1.0, L.NET)
 		# Set activations and gradient information related to activations.
 		L.activation_function!(L.NET, L.ACT)
 	end
