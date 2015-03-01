@@ -12,9 +12,9 @@ Currently supported error functions are squared error and cross entropy.
 
 StackedNets has been designed to make it relatively easy to write and add new activation and error functions to the source code. Over time it may become possible to pass in custom functions at the call-level.
 
-Support for dropout of visible/hidden activations during training will also be added in the future.
+Support for dropout of visible/hidden activations during training will also be added in the future, as will the ability to save/load trained models.
 
-The main priority in StackedNets so far has been to develop a flexible and clean API to specify StackedNets, train them, and use them for prediction. While StackedNets is I hope at least somewhat performant, I am sure there are faster frameworks out there and there are undoubtedly many optimizations that could be implemented in order to improve StackedNet's performance. I hope to work on these optimizations in the near future, once the API has solidified further. For now, however, you can be reasonably confident that StackedNet's results are correct even if it doesn't produce them at the fastest rate.
+The main priority in StackedNets so far has been to develop a flexible and clean API to specify StackedNets, train them, and use them for prediction. Hopefully StackedNets is reasonably performant for a CPU-based framework (it calls BLAS routines where possible); adding GPU compatibility may be a target for future development.
 
 ##Specifying StackedNets
 
