@@ -1,3 +1,4 @@
+using Base.BLAS
 using DataFrames
 using StatsBase
 
@@ -64,7 +65,7 @@ function forward!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T})
 		Y = zeros(T, (no, np))
 		for p = 1:np
 			forward!(DN, X, p)
-			Y[:, p] = DN.layers[end].ACT
+			blascopy!(DN.layers[end].no, DN.layers[end].ACT, 1, Y[:, p], 1)
 		end
 	end
 	Y
@@ -121,12 +122,8 @@ function gradient_reset!{T<:FloatingPoint}(DN::StackedNet{T})
 	@inbounds begin
 		for l = 1:length(DN.layers)
 			L = DN.layers[l]
-			for i = 1:length(L.GW)
-				L.GW[i] = 0.0
-			end
-			for i = 1:length(L.GB)
-				L.GB[i] = 0.0
-			end
+			fill!(L.GW, 0.0)
+			fill!(L.GB, 0.0)
 		end
 	end
 end
@@ -151,20 +148,11 @@ function gradient_update!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::
 				backward!(L, Lup.DELTAS)
 			end
 			# Increment gradient information.
+			axpy!(L.no, 1.0, L.DE_DNET, 1, L.GB, 1)
 			if l == 1
-				for o = 1:L.no
-					for i = 1:L.ni
-						L.GW[i, o] += X[i, p] * L.DE_DNET[o]
-					end
-					L.GB[o] += L.DE_DNET[o]
-				end
+				ger!(1.0, X[:, p], L.DE_DNET, L.GW)
 			else
-				for o = 1:L.no
-					for i = 1:L.ni
-						L.GW[i, o] += Ldn.ACT[i] * L.DE_DNET[o]
-					end
-					L.GB[o] += L.DE_DNET[o]
-				end
+				ger!(1.0, Ldn.ACT, L.DE_DNET, L.GW)
 			end
 		end
 	end
@@ -184,17 +172,11 @@ function parameters_update!{T<:FloatingPoint}(DN::StackedNet{T}, lr::T; reset_gr
 	@inbounds begin
 		for l = 1:length(DN.layers)
 			L = DN.layers[l]
-			for i = 1:length(L.W)
-				L.W[i] -= lr * L.GW[i]
-				if reset_gradient
-					L.GW[i] = 0.0
-				end
-			end
-			for i = 1:length(L.B)
-				L.B[i] -= lr * L.GB[i]
-				if reset_gradient
-					L.GB[i] = 0.0
-				end
+			axpy!(length(L.W), -lr, L.GW, 1, L.W, 1)
+			axpy!(length(L.B), -lr, L.GB, 1, L.B, 1)
+			if reset_gradient
+				fill!(L.GW, 0.0)
+				fill!(L.GB, 0.0)
 			end
 		end
 	end

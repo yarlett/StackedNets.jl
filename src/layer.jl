@@ -60,7 +60,7 @@ function backward!{T<:FloatingPoint}(L::Layer{T}, DELTAS::Vector{T})
 			end
 		end
 		# Set DELTAS on the layer.
-		L.DELTAS[:] = 0.0
+		fill!(L.DELTAS, 0.0)
 		gemv!('N', 1.0, L.W, L.DE_DNET, 1.0, L.DELTAS)
 	end
 end
