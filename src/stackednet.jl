@@ -65,7 +65,9 @@ function forward!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T})
 		Y = zeros(T, (no, np))
 		for p = 1:np
 			forward!(DN, X, p)
-			blascopy!(DN.layers[end].no, DN.layers[end].ACT, 1, Y[:, p], 1)
+			for o = 1:no
+				Y[o, p] = DN.layers[end].ACT[o]
+			end
 		end
 	end
 	Y
