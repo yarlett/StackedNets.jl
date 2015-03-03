@@ -6,6 +6,7 @@ immutable StackedNet{T<:FloatingPoint}
 	layers::Vector{Layer{T}}
 	error::ASCIIString
 	error_function!::Function
+	error_function_prime!::Function
 
 	function StackedNet(units::Vector{Units}; error::ASCIIString="squared_error", scale::T=1e-3)
 		if length(units) < 2
@@ -21,9 +22,9 @@ immutable StackedNet{T<:FloatingPoint}
 			layers[u] = Layer{T}(units1.n, units2.n, units2.activation, scale=scale)
 		end
 		# Set error function.
-		error, error_function! = error_function_selector(error)
+		error, error_function!, error_function_prime! = error_function_selector(error)
 		# Create and return the object.
-		new(layers, error, error_function!)
+		new(layers, error, error_function!, error_function_prime!)
 	end
 end
 
@@ -31,7 +32,7 @@ end
 function error!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T}, p::Int)
 	forward!(DN, X, p)
 	L = DN.layers[end]
-	DN.error_function!(L.ACT, Y[:, p], L.E, L.DE_DYH)
+	DN.error_function!(L.ACT, Y[:, p], L.E)
 	sum(L.E)
 end
 
@@ -144,7 +145,7 @@ function gradient_update!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::
 			Ldn = l == 1 ? nothing : DN.layers[l - 1]
 			# Backpropagation.
 			if l == nl
-				DN.error_function!(L.ACT, Y[:, p], L.E, L.DE_DYH)
+				DN.error_function_prime!(L.ACT, Y[:, p], L.DE_DYH)
 				backward!(L, L.DE_DYH)
 			else
 				backward!(L, Lup.DELTAS)
