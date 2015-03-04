@@ -190,7 +190,7 @@ function parameters_update!{T<:FloatingPoint}(DN::StackedNet{T}, lr::T; reset_gr
 	end
 end
 
-function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, Y_training::Matrix{T}; X_testing=false, Y_testing=false, custom_error::Function=nothing, iterations::Int=1000, iterations_report::Int=100, learning_rate::T=1e-2, minibatch_size::Int=100, minibatch_replace::Bool=true, report::Bool=true)
+function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, Y_training::Matrix{T}; X_testing::Union(Nothing, Matrix{T})=nothing, Y_testing::Union(Nothing, Matrix{T})=nothing, custom_error::Union(Nothing, Function)=nothing, iterations::Int=1000, iterations_report::Int=100, learning_rate::T=1e-2, minibatch_size::Int=100, minibatch_replace::Bool=true)
 	@inbounds begin
 		num_patterns::Int64 = size(X_training, 2)
 		# Minibatch size cannot be larger than number of patterns when sampling without replacement.

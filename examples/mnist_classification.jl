@@ -12,7 +12,7 @@ function digits_to_indicators(digits)
 end
 
 # Define a custom error function (non-differentiable so we can't optimize it during learning).
-function error_percent(YH::Matrix{Float64}, Y::Matrix{Float64})
+function error_percent{T<:FloatingPoint}(YH::AbstractMatrix{T}, Y::AbstractMatrix{T})
 	error = 0.0
 	for j = 1:size(YH, 2)
 		_, i1 = findmax(YH[:, j])
