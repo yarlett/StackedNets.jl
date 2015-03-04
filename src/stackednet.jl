@@ -32,7 +32,8 @@ end
 function error!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T}, p::Int)
 	forward!(DN, X, p)
 	L = DN.layers[end]
-	DN.error_function!(L.ACT, Y[:, p], L.E)
+	y = sub(Y, :, p)
+	DN.error_function!(L.ACT, y, L.E)
 	sum(L.E)
 end
 
@@ -51,7 +52,9 @@ end
 # Forward propagate a pattern through a StackedNet.
 function forward!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, p::Int)
 	@inbounds begin
-		forward!(DN.layers[1], X, p)
+		x = sub(X, :, p)
+		forward!(DN.layers[1], x)
+		# forward!(DN.layers[1], X, p)
 		for l = 2:length(DN.layers)
 			forward!(DN.layers[l], DN.layers[l - 1].ACT)
 		end
@@ -145,7 +148,8 @@ function gradient_update!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::
 			Ldn = l == 1 ? nothing : DN.layers[l - 1]
 			# Backpropagation.
 			if l == nl
-				DN.error_function_prime!(L.ACT, Y[:, p], L.DE_DYH)
+				y = sub(Y, :, p)
+				DN.error_function_prime!(L.ACT, y, L.DE_DYH)
 				backward!(L, L.DE_DYH)
 			else
 				backward!(L, Lup.DELTAS)
@@ -153,6 +157,7 @@ function gradient_update!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::
 			# Increment gradient information.
 			axpy!(L.no, 1.0, L.DE_DNET, 1, L.GB, 1)
 			if l == 1
+				x = sub(X, :, p)
 				ger!(1.0, X[:, p], L.DE_DNET, L.GW)
 			else
 				ger!(1.0, Ldn.ACT, L.DE_DNET, L.GW)

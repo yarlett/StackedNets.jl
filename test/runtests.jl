@@ -3,12 +3,16 @@ using Base.Test
 
 # Function to numerically check the analytic error gradients.
 function test_deepnet_gradient(; cases::Int=1)
-	for activation in ["exponential", "linear", "rectified_linear", "sigmoid", "softmax", "softplus", "tanh"]
+	for activation in ["exponential", "leaky_rectified_linear", "linear", "rectified_linear", "sigmoid", "softmax", "softplus", "tanh"]
 		for error in ("squared_error", "cross_entropy")
 			println("Testing $activation units with $error errors.")
 			# Construct a random deep network based on the activation and error types.
 			units = _generate_random_unit_list(activation, error)
 			DN = StackedNet{Float64}(units, error=error, scale=1e-1)
+			# Check the layers in the net have the required activation type.
+			for l = 1:length(DN.layers) - 1
+				@test DN.layers[l].activation == activation
+			end
 			# Construct input / output cases.
 			X = rand(units[1].n, cases)
 			Y = rand(units[end].n, cases)
