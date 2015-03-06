@@ -19,10 +19,19 @@ immutable Layer{T<:FloatingPoint}
 	activation_function!::Function
 	activation_backward!::Function
 
-	function Layer(ni::Int, no::Int, activation::ASCIIString; scale::T=1e-3)
+	function Layer(ni::Int, no::Int, activation::ASCIIString)
 		if ni > 0 && no > 0
 			# Initialize weights and biases for layer.
-			W, B = get_layer_parameters(ni, no, scale=scale)
+			sigma = ni ^ -0.5
+			sigma = 1e-2
+			W = zeros(T, (ni, no))
+			for i = 1:length(W)
+				W[i] = sigma * randn()
+			end
+			B = zeros(T, no)
+			for i = 1:length(B)
+				B[i] = sigma * randn()
+			end
 			# Initialize storage for gradient information.
 			GW, GB = zeros(W), zeros(B)
 			# Initialize storage for upper level units.

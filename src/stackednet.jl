@@ -8,7 +8,7 @@ immutable StackedNet{T<:FloatingPoint}
 	error_function!::Function
 	error_function_prime!::Function
 
-	function StackedNet(units::Vector{Units}; error::ASCIIString="squared_error", scale::T=1e-3)
+	function StackedNet(units::Vector{Units}; error::ASCIIString="squared_error")
 		if length(units) < 2
 			return error("StackedNet units specification is too short.")
 		end
@@ -19,7 +19,7 @@ immutable StackedNet{T<:FloatingPoint}
 		layers = Array(Layer{T}, length(units)-1)
 		for u = 1:length(units)-1
 			units1, units2 = units[u], units[u + 1]
-			layers[u] = Layer{T}(units1.n, units2.n, units2.activation, scale=scale)
+			layers[u] = Layer{T}(units1.n, units2.n, units2.activation)
 		end
 		# Set error function.
 		error, error_function!, error_function_prime! = error_function_selector(error)
@@ -44,7 +44,7 @@ function error!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T})
 		for p = 1:size(X, 2)
 			E += error!(DN, X, Y, p)
 		end
-		E /= size(X, 2)
+		E = E / size(X, 2)
 	end
 	E
 end
@@ -100,6 +100,7 @@ function gradient_check{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Ma
 				M[i] = current_parameter_value
 				# Compare gradient values.
 				absolute_error = abs(analytic_gradient - numerical_gradient)
+				# absolute_error = abs(analytic_gradient - numerical_gradient)
 				push!(df, (l, i, analytic_gradient, numerical_gradient, absolute_error, absolute_error < tolerance? true : false))
 			end
 		end
@@ -190,6 +191,21 @@ function parameters_update!{T<:FloatingPoint}(DN::StackedNet{T}, lr::T; reset_gr
 	end
 end
 
+function get_learning_rate{T<:FloatingPoint}(DN::StackedNet{T}, max_parameter_change::T)
+	gmax::T = -Inf
+	for l = 1:length(DN.layers)
+		wmax = maximum(abs(DN.layers[l].GW))
+		if wmax > gmax
+			gmax = wmax
+		end
+		bmax = maximum(abs(DN.layers[l].GB))
+		if bmax > gmax
+			gmax = bmax
+		end
+	end
+	max_parameter_change / gmax
+end
+
 function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, Y_training::Matrix{T}; X_testing::Union(Nothing, Matrix{T})=nothing, Y_testing::Union(Nothing, Matrix{T})=nothing, custom_error::Union(Nothing, Function)=nothing, iterations::Int=1000, iterations_report::Int=100, learning_rate::T=1e-2, minibatch_size::Int=100, minibatch_replace::Bool=true)
 	@inbounds begin
 		num_patterns::Int64 = size(X_training, 2)
@@ -200,8 +216,8 @@ function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, 
 		# Reserve space for minibatch integers.
 		minibatch_ints = zeros(Int, minibatch_size)
 		minibatch_domain = 1:num_patterns
-		# Adjust the learning rate to account for the size of the minibatch.
-		learning_rate_use = learning_rate / minibatch_size
+		# # Adjust the learning rate to account for the size of the minibatch.
+		# learning_rate_use = learning_rate / minibatch_size
 		# Create results dataframe if reporting is required.
 		if custom_error == nothing
 			df = DataFrame(iteration=Int64[], error_training=T[], error_testing=T[])
@@ -216,6 +232,8 @@ function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, 
 			for minibatch_int in minibatch_ints
 				gradient_update!(DN, X_training, Y_training, minibatch_int)
 			end
+			# Set the learning rate such that the maximum parameter update has the desired value.
+			learning_rate_use = get_learning_rate(DN, learning_rate)
 			# Update the parameters based on the gradient information.
 			parameters_update!(DN, learning_rate_use, reset_gradient=true)
 			# Decide whether to record performance.

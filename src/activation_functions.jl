@@ -26,7 +26,11 @@ end
 function exponential_activation!{T<:FloatingPoint}(NET::Vector{T}, ACT::Vector{T})
 	@inbounds begin
 		for i = 1:length(NET)
-			ACT[i] = exp(NET[i])
+			if NET[i] > 500.0
+				ACT[i] = exp(500.0)
+			else
+				ACT[i] = exp(NET[i])
+			end
 		end
 	end
 end
