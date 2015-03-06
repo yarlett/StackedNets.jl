@@ -228,7 +228,7 @@ function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, 
 		gradient_reset!(DN)
 		for iteration = 1:iterations
 			# Increment the gradient information based on the minibatch.
-			sample!(minibatch_domain, minibatch_ints, replace=minibatch_replace)
+			sort!(sample!(minibatch_domain, minibatch_ints, replace=minibatch_replace))
 			for minibatch_int in minibatch_ints
 				gradient_update!(DN, X_training, Y_training, minibatch_int)
 			end
