@@ -22,7 +22,6 @@ immutable Layer{T<:FloatingPoint}
 	function Layer(ni::Int, no::Int, activation::ASCIIString)
 		if ni > 0 && no > 0
 			# Initialize weights and biases for layer.
-			sigma = ni ^ -0.5
 			sigma = 1e-2
 			W = zeros(T, (ni, no))
 			for i = 1:length(W)
