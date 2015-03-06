@@ -66,15 +66,27 @@ function forward!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T})
 	@inbounds begin
 		no = DN.layers[end].no
 		np = size(X, 2)
-		Y = zeros(T, (no, np))
+		YH = zeros(T, (no, np))
 		for p = 1:np
 			forward!(DN, X, p)
 			for o = 1:no
-				Y[o, p] = DN.layers[end].ACT[o]
+				YH[o, p] = DN.layers[end].ACT[o]
 			end
 		end
 	end
-	Y
+	YH
+end
+
+# Returns output activations in a StackedNet for a set of input patterns.
+function forward!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, YH::Matrix{T})
+	@inbounds begin
+		for p = 1:np
+			forward!(DN, X, p)
+			for o = 1:no
+				YH[o, p] = DN.layers[end].ACT[o]
+			end
+		end
+	end
 end
 
 # Numerically checks the analytic gradient of a StackedNet and returns a data frame of results.
@@ -224,6 +236,11 @@ function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, 
 		else
 			df = DataFrame(iteration=Int64[], error_training=T[], error_testing=T[], custom_error_training=T[], custom_error_testing=T[])
 		end
+		# Reserve space for output predictions if custom error function specified.
+		if custom_error != nothing
+			YH_training = zeros(T, (DN.layers[end].no, size(X_training, 2)))
+			YH_testing = zeros(T, (DN.layers[end].no, size(X_testing, 2)))
+		end
 		# Perform the required number of iterations of learning.
 		gradient_reset!(DN)
 		for iteration = 1:iterations
@@ -242,8 +259,8 @@ function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, 
 				if custom_error == nothing
 					row = (iteration, error!(DN, X_training, Y_training), error!(DN, X_testing, Y_testing))
 				else
-					YH_training = forward!(DN, X_training)
-					YH_testing = forward!(DN, X_testing)
+					forward!(DN, X_training, YH_training)
+					forward!(DN, X_testing, YH_testing)
 					row = (iteration, error!(DN, X_training, Y_training), error!(DN, X_testing, Y_testing), custom_error(YH_training, Y_training), custom_error(YH_testing, Y_testing))
 				end
 				push!(df, row)
