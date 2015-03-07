@@ -4,7 +4,7 @@ using Base.Test
 # Function to numerically check the analytic error gradients.
 function test_deepnet_gradient(; cases::Int=1)
 	for activation in ["exponential", "leaky_rectified_linear", "linear", "rectified_linear", "sigmoid", "softmax", "softplus", "tanh"]
-		for error in ("squared_error", "cross_entropy")
+		for error in ("absolute_error", "cross_entropy", "squared_error")
 			println("Testing $activation units with $error errors.")
 			# Construct a random deep network based on the activation and error types.
 			units = _generate_random_unit_list(activation, error)

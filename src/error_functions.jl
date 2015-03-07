@@ -13,7 +13,11 @@ end
 function absolute_error!{T<:FloatingPoint}(YH::AbstractVector{T}, Y::AbstractVector{T}, E::AbstractVector{T}; eta::T=1e-10)
 	@inbounds begin
 		for i = 1:length(E)
-			E[i] = abs(Y[i] - YH[i])
+			if YH[i] > Y[i]
+				E[i] = YH[i] - Y[i]
+			else
+				E[i] = Y[i] - YH[i]
+			end
 		end
 	end
 end
@@ -22,9 +26,9 @@ function absolute_error_prime!{T<:FloatingPoint}(YH::AbstractVector{T}, Y::Abstr
 	@inbounds begin
 		for i = 1:length(Y)
 			if YH[i] > Y[i]
-				DE_DYH[i] = YH[i]
+				DE_DYH[i] = 1.0
 			else
-				DE_DYH[i] = -YH[i]
+				DE_DYH[i] = -1.0
 			end
 		end
 	end
