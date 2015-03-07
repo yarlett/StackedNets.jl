@@ -90,7 +90,7 @@ function forward!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, YH::Matrix{
 end
 
 # Numerically checks the analytic gradient of a StackedNet and returns a data frame of results.
-function gradient_check{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T}; step=1e-8, tolerance=1e-5)
+function gradient_check{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Matrix{T}; step=1e-8, abs_tolerance=1e-5, rel_tolerance=1e-3)
 	# Initialize data frame.
 	df = DataFrame(layer=Int64[], parameter=Int64[], analytic_grad=T[], numerical_grad=T[], absolute_error=T[], ok=Bool[])
 	# Iterate over layers, and parameters within each layer.
@@ -111,8 +111,14 @@ function gradient_check{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Ma
 				numerical_gradient = (EP - EN) / (2.0 * step)
 				M[i] = current_parameter_value
 				# Compare gradient values.
-				absolute_error = abs(analytic_gradient - numerical_gradient)
-				push!(df, (l, i, analytic_gradient, numerical_gradient, absolute_error, absolute_error < tolerance? true : false))
+				# if (analytic_gradient == 0.0) & (numerical_gradient == 0.0)
+				# 	error = 0.0
+				# else
+				# 	error = abs(analytic_gradient - numerical_gradient) / (abs(analytic_gradient) + abs(numerical_gradient))
+				# end
+				error = abs(analytic_gradient - numerical_gradient)
+				ok = error <= abs_tolerance + (rel_tolerance * abs(numerical_gradient)) ? true : false
+				push!(df, (l, i, analytic_gradient, numerical_gradient, error, ok))
 			end
 		end
 	end
