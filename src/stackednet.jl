@@ -112,7 +112,6 @@ function gradient_check{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::Ma
 				M[i] = current_parameter_value
 				# Compare gradient values.
 				absolute_error = abs(analytic_gradient - numerical_gradient)
-				# absolute_error = abs(analytic_gradient - numerical_gradient)
 				push!(df, (l, i, analytic_gradient, numerical_gradient, absolute_error, absolute_error < tolerance? true : false))
 			end
 		end
@@ -140,9 +139,8 @@ end
 function gradient_reset!{T<:FloatingPoint}(DN::StackedNet{T})
 	@inbounds begin
 		for l = 1:length(DN.layers)
-			L = DN.layers[l]
-			fill!(L.GW, 0.0)
-			fill!(L.GB, 0.0)
+			fill!(DN.layers[l].GW, 0.0)
+			fill!(DN.layers[l].GB, 0.0)
 		end
 	end
 end
@@ -189,12 +187,35 @@ function gradient_update!{T<:FloatingPoint}(DN::StackedNet{T}, X::Matrix{T}, Y::
 end
 
 # Update the parameters of a StackedNet based on the accumulated gradient information.
-function parameters_update!{T<:FloatingPoint}(DN::StackedNet{T}, lr::T; reset_gradient::Bool=true)
+function parameters_update!{T<:FloatingPoint}(DN::StackedNet{T}, learning_rate::T; reset_gradient::Bool=true)
 	@inbounds begin
+		#lr_use = get_learning_rate(DN, lr)
 		for l = 1:length(DN.layers)
 			L = DN.layers[l]
-			axpy!(length(L.W), -lr, L.GW, 1, L.W, 1)
-			axpy!(length(L.B), -lr, L.GB, 1, L.B, 1)
+			for i = 1:length(L.B)
+				L.B[i] -= learning_rate * sign(L.GB[i])
+			end
+			for i = 1:length(L.W)
+				L.W[i] -= learning_rate * sign(L.GW[i])
+			end
+			# for i = 1:length(L.GB)
+			# 	L.UB[i] = 0.9 * L.UB[i] + 0.1 * abs(L.GB[i])
+			# 	if L.UB[i] > 0.0
+			# 		L.B[i] -= (lr_use / L.UB[i]) * L.GB[i]
+			# 	else
+			# 		L.B[i] -= lr_use * L.GB[i]
+			# 	end
+			# end
+			# for i = 1:length(L.GW)
+			# 	L.UW[i] = 0.9 * L.UW[i] + 0.1 * abs(L.GW[i])
+			# 	if L.UW[i] > 0.0
+			# 		L.W[i] -= (lr_use / L.UW[i]) * L.GW[i]
+			# 	else
+			# 		L.W[i] -= lr_use * L.GW[i]
+			# 	end
+			# end
+			# axpy!(length(L.W), -lr, L.GW, 1, L.W, 1)
+			# axpy!(length(L.B), -lr, L.GB, 1, L.B, 1)
 			if reset_gradient
 				fill!(L.GW, 0.0)
 				fill!(L.GB, 0.0)
@@ -204,17 +225,7 @@ function parameters_update!{T<:FloatingPoint}(DN::StackedNet{T}, lr::T; reset_gr
 end
 
 function get_learning_rate{T<:FloatingPoint}(DN::StackedNet{T}, max_parameter_change::T)
-	gmax::T = -Inf
-	for l = 1:length(DN.layers)
-		wmax = maximum(abs(DN.layers[l].GW))
-		if wmax > gmax
-			gmax = wmax
-		end
-		bmax = maximum(abs(DN.layers[l].GB))
-		if bmax > gmax
-			gmax = bmax
-		end
-	end
+	gmax = gradient_maxabs(DN)
 	max_parameter_change / gmax
 end
 
@@ -228,8 +239,6 @@ function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, 
 		# Reserve space for minibatch integers.
 		minibatch_ints = zeros(Int, minibatch_size)
 		minibatch_domain = 1:num_patterns
-		# # Adjust the learning rate to account for the size of the minibatch.
-		# learning_rate_use = learning_rate / minibatch_size
 		# Create results dataframe if reporting is required.
 		if custom_error == nothing
 			df = DataFrame(iteration=Int64[], error_training=T[], error_testing=T[])
@@ -249,10 +258,8 @@ function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, 
 			for minibatch_int in minibatch_ints
 				gradient_update!(DN, X_training, Y_training, minibatch_int)
 			end
-			# Set the learning rate such that the maximum parameter update has the desired value.
-			learning_rate_use = get_learning_rate(DN, learning_rate)
 			# Update the parameters based on the gradient information.
-			parameters_update!(DN, learning_rate_use, reset_gradient=true)
+			parameters_update!(DN, learning_rate, reset_gradient=true)
 			# Decide whether to record performance.
 			if (iteration % iterations_report) == 0
 				# Construct row to add to dataframe.
@@ -264,7 +271,7 @@ function train_sgd!{T<:FloatingPoint}(DN::StackedNet{T}, X_training::Matrix{T}, 
 					row = (iteration, error!(DN, X_training, Y_training), error!(DN, X_testing, Y_testing), custom_error(YH_training, Y_training), custom_error(YH_testing, Y_testing))
 				end
 				push!(df, row)
-				println("Iteration $iteration. Error $(df[end, :error_training]).")
+				println("Iteration $iteration. Training error $(df[end, :error_training]). Testing error $(df[end, :error_testing]).")
 			end
 		end
 	end

@@ -9,6 +9,8 @@ immutable Layer{T<:FloatingPoint}
 	B::Vector{T}
 	GW::Matrix{T}
 	GB::Vector{T}
+	UW::Matrix{T}
+	UB::Vector{T}
 	NET::Vector{T}
 	ACT::Vector{T}
 	DE_DNET::Vector{T}
@@ -33,6 +35,7 @@ immutable Layer{T<:FloatingPoint}
 			end
 			# Initialize storage for gradient information.
 			GW, GB = zeros(W), zeros(B)
+			UW, UB = zeros(W), zeros(B)
 			# Initialize storage for upper level units.
 			NET = zeros(T, no)
 			ACT = zeros(T, no)
@@ -43,7 +46,7 @@ immutable Layer{T<:FloatingPoint}
 			# Set activation function for layer.
 			activation, activation_function!, activation_backward! = activation_function_selector(activation)
 			# Create and return the object.
-			new(ni, no, W, B, GW, GB, NET, ACT, DE_DNET, E, DE_DYH, DELTAS, activation, activation_function!, activation_backward!)
+			new(ni, no, W, B, GW, GB, UW, UB, NET, ACT, DE_DNET, E, DE_DYH, DELTAS, activation, activation_function!, activation_backward!)
 		else
 			error("Invalid number of units used to initialize Layer object (ni=$ni; no=$no) to create Layer object.")
 		end
